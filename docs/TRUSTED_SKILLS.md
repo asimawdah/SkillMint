@@ -1,6 +1,6 @@
-# Trusted External Skill Sources
+# Trusted Skill Sources
 
-SkillForge should only auto-suggest external skills from trusted or clearly labeled sources.
+SkillMint should only suggest external skills from trusted or clearly labeled sources.
 
 ## Confirmed sources
 

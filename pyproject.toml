@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "skillforge"
+name = "skillmint"
 version = "0.1.0"
 description = "One command to make your codebase AI-agent ready."
 readme = "README.md"
@@ -35,8 +35,8 @@ Repository = "https://github.com/asimawdah/SkillForge"
 Issues = "https://github.com/asimawdah/SkillForge/issues"
 
 [project.scripts]
-skillforge = "skillforge.cli:main"
+skillmint = "skillmint.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["skillforge*"]
+include = ["skillmint*"]

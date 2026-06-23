@@ -12,7 +12,7 @@ class UI:
         self.interactive = sys.stdin.isatty()
 
     def print_header(self) -> None:
-        print("\nSkillForge")
+        print("\nSkillMint")
         print("One command to make your codebase AI-agent ready.\n")
 
     def show_detections(self, detections: List[Detection]) -> None:

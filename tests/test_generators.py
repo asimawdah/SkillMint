@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from skillforge.generators import generate_all, generate_internal_skill
-from skillforge.models import Detection, StackDefinition
+from skillmint.generators import generate_all, generate_internal_skill
+from skillmint.models import Detection, StackDefinition
 
 
 def test_generate_all_writes_expected_instruction_files(tmp_path: Path) -> None:

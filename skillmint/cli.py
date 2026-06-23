@@ -13,10 +13,10 @@ from .ui import UI
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="skillforge",
+        prog="skillmint",
         description="One command to make your codebase AI-agent ready.",
     )
-    parser.add_argument("--version", action="store_true", help="Show SkillForge version and exit.")
+    parser.add_argument("--version", action="store_true", help="Show SkillMint version and exit.")
     parser.add_argument("--yes", "-y", action="store_true", help="Accept defaults without prompting.")
     parser.add_argument("--no-external", action="store_true", help="Do not download external skills; generate local skills instead.")
     parser.add_argument("--root", default=".", help="Project directory. Defaults to current directory.")

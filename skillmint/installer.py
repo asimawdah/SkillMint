@@ -53,7 +53,7 @@ def _install_external_skill(root: Path, external: ExternalSkill, result: Install
         return False
 
     target.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="skillforge-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="skillmint-") as tmp:
         tmp_path = Path(tmp) / "skill"
         command = [git, "clone", "--depth", "1", external.url, str(tmp_path)]
         completed = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -79,7 +79,7 @@ def _write_external_fallback(root: Path, stack: StackDefinition, external: Exter
         "",
         external.url,
         "",
-        "SkillForge could not download this external skill automatically, so this local reference was created.",
+        "SkillMint could not download this external skill automatically, so this local reference was created.",
         "",
         "## Project Stack",
         "",
