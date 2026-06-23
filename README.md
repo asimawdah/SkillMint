@@ -49,6 +49,24 @@ SkillMint will:
 5. Generate agent instruction files.
 6. Copy or generate skills into the project.
 
+## Safe workflow
+
+SkillMint should make AI-assisted development safer, not noisier. A normal run should follow this flow:
+
+1. Inspect the project before writing files.
+2. Explain the detected stack and recommended instruction files.
+3. Ask for confirmation before installing external skills.
+4. Prefer small, readable generated files over large hidden configuration.
+5. Keep generated content easy to review in Git before it is committed.
+
+Recommended review command after running SkillMint:
+
+```bash
+git diff -- AGENTS.md CLAUDE.md .cursor/rules/project.mdc .github/copilot-instructions.md .ai/skills
+```
+
+If the generated files do not match the project, edit them before giving an AI agent permission to modify code.
+
 ## Generated files
 
 SkillMint can create:
