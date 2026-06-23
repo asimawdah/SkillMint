@@ -11,6 +11,7 @@ class ExternalSkill:
     url: str
     install_path: str
     trusted: bool = False
+    subdirectory: str = ""
 
 
 @dataclass(frozen=True)
