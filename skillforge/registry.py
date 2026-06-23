@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from .models import ExternalSkill, StackDefinition
 from .registry_extra import EXTRA_REGISTRY
+from .registry_extra_backend import BACKEND_REGISTRY
 
 FLUTTER_SKILL = ExternalSkill("flutter-official", "Flutter official agent skills", "https://github.com/flutter/skills", ".ai/skills/flutter", True)
 DART_SKILL = ExternalSkill("dart-official", "Dart official agent skills", "https://github.com/dart-lang/skills", ".ai/skills/dart", True)
@@ -18,3 +19,4 @@ REGISTRY = {
     "github-actions": StackDefinition(id="github-actions", name="GitHub Actions", commands={}, directories=[".github/workflows/"], avoid=[], rules=["Keep workflows readable and scoped."]),
 }
 REGISTRY.update(EXTRA_REGISTRY)
+REGISTRY.update(BACKEND_REGISTRY)
