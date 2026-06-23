@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from .models import StackDefinition
+from .models import ExternalSkill, StackDefinition
 from .registry_extra import EXTRA_REGISTRY
 
+FLUTTER_SKILL = ExternalSkill("flutter-official", "Flutter official agent skills", "https://github.com/flutter/skills", ".ai/skills/flutter", True)
+DART_SKILL = ExternalSkill("dart-official", "Dart official agent skills", "https://github.com/dart-lang/skills", ".ai/skills/dart", True)
+
 REGISTRY = {
-    "flutter": StackDefinition(id="flutter", name="Flutter / Dart", commands={"Install dependencies": "flutter pub get", "Analyze": "flutter analyze", "Test": "flutter test", "Run": "flutter run"}, directories=["lib/", "test/", "android/", "ios/", "web/"], avoid=["build/", ".dart_tool/"], rules=["Follow Flutter and Dart conventions."]),
+    "flutter": StackDefinition(id="flutter", name="Flutter / Dart", commands={"Install dependencies": "flutter pub get", "Analyze": "flutter analyze", "Test": "flutter test", "Run": "flutter run"}, directories=["lib/", "test/", "android/", "ios/", "web/"], avoid=["build/", ".dart_tool/"], rules=["Follow Flutter and Dart conventions."], external_skills=[FLUTTER_SKILL, DART_SKILL]),
     "react": StackDefinition(id="react", name="React", commands={"Install dependencies": "npm install", "Dev server": "npm run dev", "Build": "npm run build", "Test": "npm test"}, directories=["src/", "public/", "components/", "pages/", "app/"], avoid=["node_modules/", "dist/", "build/", ".next/"], rules=["Keep components focused and reusable."]),
     "python": StackDefinition(id="python", name="Python", commands={"Install dependencies": "pip install -r requirements.txt", "Test": "pytest"}, directories=["src/", "tests/", "app/"], avoid=[".venv/", "__pycache__/"], rules=["Follow the existing Python style and project layout."]),
     "fastapi": StackDefinition(id="fastapi", name="FastAPI", commands={"Run API": "uvicorn main:app --reload", "Test": "pytest"}, directories=["app/", "routers/", "tests/"], avoid=[".venv/", "__pycache__/"], rules=["Use routers and dependency injection where appropriate."]),
