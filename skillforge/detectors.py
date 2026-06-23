@@ -8,6 +8,16 @@ from .models import Detection
 from .registry import REGISTRY
 
 
+NODE_DEPENDENCY_KEYS = (
+    "dependencies",
+    "devDependencies",
+    "peerDependencies",
+    "optionalDependencies",
+    "bundledDependencies",
+    "bundleDependencies",
+)
+
+
 def exists(root: Path, relative: str) -> bool:
     return (root / relative).exists()
 
@@ -31,10 +41,12 @@ def package_json(root: Path) -> dict:
 
 def package_names(data: dict) -> set[str]:
     names = set()
-    for key in ("dependencies", "devDependencies", "peerDependencies"):
+    for key in NODE_DEPENDENCY_KEYS:
         value = data.get(key)
         if isinstance(value, dict):
             names.update(value.keys())
+        elif isinstance(value, list):
+            names.update(item for item in value if isinstance(item, str))
     return names
 
 
