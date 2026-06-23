@@ -2,174 +2,118 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Iterable, List
+from typing import List
 
 from .models import Detection
 from .registry import REGISTRY
-
-
-IGNORED_DIRS = {
-    ".git",
-    ".idea",
-    ".vscode",
-    "node_modules",
-    "vendor",
-    ".venv",
-    "build",
-    "dist",
-    ".dart_tool",
-}
 
 
 def exists(root: Path, relative: str) -> bool:
     return (root / relative).exists()
 
 
-def any_exists(root: Path, paths: Iterable[str]) -> bool:
-    return any(exists(root, p) for p in paths)
-
-
 def read_text_safe(path: Path, limit: int = 200_000) -> str:
     try:
-        data = path.read_text(encoding="utf-8", errors="ignore")
-        return data[:limit]
+        return path.read_text(encoding="utf-8", errors="ignore")[:limit]
     except OSError:
         return ""
 
 
+def package_json(root: Path) -> dict:
+    path = root / "package.json"
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(read_text_safe(path))
+    except json.JSONDecodeError:
+        return {}
+
+
+def package_names(data: dict) -> set[str]:
+    names = set()
+    for key in ("dependencies", "devDependencies", "peerDependencies"):
+        value = data.get(key)
+        if isinstance(value, dict):
+            names.update(value.keys())
+    return names
+
+
+def add(items: List[Detection], stack_id: str, confidence: int, reasons: List[str]) -> None:
+    stack = REGISTRY.get(stack_id)
+    if stack is not None:
+        items.append(Detection(stack, min(confidence, 100), reasons))
+
+
 def detect(root: Path) -> List[Detection]:
     detections: List[Detection] = []
-    detections.extend(_detect_flutter(root))
-    detections.extend(_detect_react(root))
-    detections.extend(_detect_laravel(root))
-    detections.extend(_detect_python(root))
-    detections.extend(_detect_go(root))
-    detections.extend(_detect_docker(root))
-    detections.extend(_detect_github_actions(root))
+
+    if exists(root, "pubspec.yaml"):
+        text = read_text_safe(root / "pubspec.yaml").lower()
+        if "flutter:" in text or "sdk: flutter" in text:
+            add(detections, "flutter", 95, ["found Flutter pubspec.yaml"])
+        else:
+            add(detections, "dart", 80, ["found Dart pubspec.yaml"])
+
+    pkg = package_json(root)
+    deps = package_names(pkg)
+    if pkg:
+        add(detections, "node", 65, ["found package.json"])
+        if "react" in deps:
+            add(detections, "react", 90, ["package.json includes react"])
+        if "next" in deps or exists(root, "next.config.js") or exists(root, "next.config.mjs"):
+            add(detections, "nextjs", 90, ["detected Next.js"])
+        if "vue" in deps or "@vue/core" in deps or exists(root, "vue.config.js"):
+            add(detections, "vue", 85, ["detected Vue"])
+        if "nuxt" in deps or exists(root, "nuxt.config.ts") or exists(root, "nuxt.config.js"):
+            add(detections, "nuxt", 90, ["detected Nuxt"])
+        if "svelte" in deps or "@sveltejs/kit" in deps or exists(root, "svelte.config.js"):
+            add(detections, "svelte", 90, ["detected Svelte or SvelteKit"])
+        if "@angular/core" in deps or exists(root, "angular.json"):
+            add(detections, "angular", 90, ["detected Angular"])
+        if "express" in deps:
+            add(detections, "express", 85, ["detected Express"])
+        if "@nestjs/core" in deps:
+            add(detections, "nestjs", 90, ["detected NestJS"])
+        if "expo" in deps or exists(root, "app.json") or exists(root, "app.config.js") or exists(root, "app.config.ts"):
+            add(detections, "expo", 90, ["detected Expo"])
+
+    py_markers = ["pyproject.toml", "requirements.txt", "setup.py", "setup.cfg", "Pipfile"]
+    if any(exists(root, marker) for marker in py_markers):
+        add(detections, "python", 70, ["found Python packaging or dependency file"])
+        text = "\n".join(read_text_safe(root / marker).lower() for marker in py_markers if exists(root, marker))
+        if "fastapi" in text or "fastapi" in read_text_safe(root / "main.py").lower() or "fastapi" in read_text_safe(root / "app/main.py").lower():
+            add(detections, "fastapi", 90, ["detected FastAPI"])
+        if "django" in text or exists(root, "manage.py"):
+            add(detections, "django", 90, ["detected Django"])
+        if "flask" in text:
+            add(detections, "flask", 85, ["detected Flask"])
+
+    if exists(root, "go.mod"):
+        add(detections, "go", 95, ["found go.mod"])
+    if exists(root, "Cargo.toml"):
+        add(detections, "rust", 95, ["found Cargo.toml"])
+    if exists(root, "composer.json"):
+        composer = read_text_safe(root / "composer.json").lower()
+        if "laravel/framework" in composer or exists(root, "artisan"):
+            add(detections, "laravel", 95, ["detected Laravel"])
+    if exists(root, "pom.xml") or exists(root, "build.gradle") or exists(root, "build.gradle.kts"):
+        add(detections, "java", 70, ["found JVM build file"])
+        text = read_text_safe(root / "pom.xml").lower() + read_text_safe(root / "build.gradle").lower() + read_text_safe(root / "build.gradle.kts").lower()
+        if "spring-boot" in text or "org.springframework.boot" in text:
+            add(detections, "spring", 90, ["detected Spring Boot"])
+        if "kotlin" in text or exists(root, "src/main/kotlin"):
+            add(detections, "kotlin", 85, ["detected Kotlin"])
+        if exists(root, "app/src/main/AndroidManifest.xml") or exists(root, "AndroidManifest.xml"):
+            add(detections, "android", 90, ["detected Android"])
+
+    if exists(root, "Dockerfile") or exists(root, "docker-compose.yml") or exists(root, "compose.yml"):
+        add(detections, "docker", 80, ["detected Docker files"])
+    if exists(root, ".github/workflows"):
+        add(detections, "github-actions", 80, ["found .github/workflows/"])
 
     by_id = {}
     for item in detections:
-        previous = by_id.get(item.id)
-        if previous is None or item.confidence > previous.confidence:
+        current = by_id.get(item.id)
+        if current is None or item.confidence > current.confidence:
             by_id[item.id] = item
-
-    return sorted(by_id.values(), key=lambda d: (-d.confidence, d.name.lower()))
-
-
-def _detect_flutter(root: Path) -> List[Detection]:
-    reasons = []
-    confidence = 0
-    if exists(root, "pubspec.yaml"):
-        confidence += 50
-        reasons.append("found pubspec.yaml")
-        text = read_text_safe(root / "pubspec.yaml")
-        if "flutter:" in text or "sdk: flutter" in text:
-            confidence += 30
-            reasons.append("pubspec.yaml references Flutter")
-    if exists(root, "lib"):
-        confidence += 10
-        reasons.append("found lib/")
-    if any_exists(root, ["android", "ios"]):
-        confidence += 10
-        reasons.append("found mobile platform directories")
-    return [Detection(REGISTRY["flutter"], min(confidence, 100), reasons)] if confidence >= 50 else []
-
-
-def _detect_react(root: Path) -> List[Detection]:
-    package = root / "package.json"
-    if not package.exists():
-        return []
-    reasons = ["found package.json"]
-    confidence = 35
-    try:
-        data = json.loads(read_text_safe(package))
-    except json.JSONDecodeError:
-        data = {}
-    deps = {}
-    for key in ("dependencies", "devDependencies"):
-        if isinstance(data.get(key), dict):
-            deps.update(data[key])
-    if "react" in deps:
-        confidence += 45
-        reasons.append("package.json includes react")
-    if "vite" in deps or exists(root, "vite.config.ts") or exists(root, "vite.config.js"):
-        confidence += 10
-        reasons.append("detected Vite")
-    if "next" in deps or exists(root, "next.config.js") or exists(root, "next.config.mjs"):
-        confidence += 10
-        reasons.append("detected Next.js")
-    return [Detection(REGISTRY["react"], min(confidence, 100), reasons)] if confidence >= 50 else []
-
-
-def _detect_laravel(root: Path) -> List[Detection]:
-    reasons = []
-    confidence = 0
-    if exists(root, "artisan"):
-        confidence += 45
-        reasons.append("found artisan")
-    composer = root / "composer.json"
-    if composer.exists():
-        confidence += 25
-        reasons.append("found composer.json")
-        text = read_text_safe(composer)
-        if "laravel/framework" in text:
-            confidence += 30
-            reasons.append("composer.json includes laravel/framework")
-    if exists(root, "app/Http/Controllers"):
-        confidence += 10
-        reasons.append("found app/Http/Controllers")
-    return [Detection(REGISTRY["laravel"], min(confidence, 100), reasons)] if confidence >= 50 else []
-
-
-def _detect_python(root: Path) -> List[Detection]:
-    python_markers = ["pyproject.toml", "requirements.txt", "setup.py", "setup.cfg", "Pipfile"]
-    if not any_exists(root, python_markers):
-        return []
-    detections: List[Detection] = []
-    confidence = 55
-    reasons = ["found Python dependency or packaging file"]
-    all_text = "\n".join(read_text_safe(root / marker) for marker in python_markers if exists(root, marker))
-
-    if "fastapi" in all_text.lower() or _file_contains(root, "main.py", "FastAPI") or _file_contains(root, "app/main.py", "FastAPI"):
-        detections.append(Detection(REGISTRY["fastapi"], 85, reasons + ["detected FastAPI reference"]))
-    if exists(root, "manage.py") or "django" in all_text.lower():
-        detections.append(Detection(REGISTRY["django"], 85, reasons + ["detected Django reference"]))
-
-    detections.append(Detection(REGISTRY["python"], confidence, reasons))
-    return detections
-
-
-def _file_contains(root: Path, relative: str, needle: str) -> bool:
-    path = root / relative
-    return path.exists() and needle in read_text_safe(path)
-
-
-def _detect_go(root: Path) -> List[Detection]:
-    reasons = []
-    confidence = 0
-    if exists(root, "go.mod"):
-        confidence += 80
-        reasons.append("found go.mod")
-    if any(root.glob("*.go")):
-        confidence += 20
-        reasons.append("found Go files")
-    return [Detection(REGISTRY["go"], min(confidence, 100), reasons)] if confidence >= 60 else []
-
-
-def _detect_docker(root: Path) -> List[Detection]:
-    reasons = []
-    confidence = 0
-    if exists(root, "Dockerfile"):
-        confidence += 60
-        reasons.append("found Dockerfile")
-    if any_exists(root, ["docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"]):
-        confidence += 40
-        reasons.append("found Docker Compose file")
-    return [Detection(REGISTRY["docker"], min(confidence, 100), reasons)] if confidence >= 40 else []
-
-
-def _detect_github_actions(root: Path) -> List[Detection]:
-    workflows = root / ".github" / "workflows"
-    if workflows.exists() and (any(workflows.glob("*.yml")) or any(workflows.glob("*.yaml"))):
-        return [Detection(REGISTRY["github-actions"], 80, ["found .github/workflows/"])]
-    return []
+    return sorted(by_id.values(), key=lambda item: (-item.confidence, item.name.lower()))
