@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from skillforge.detectors import detect
-from skillforge.generators import generate_all
-from skillforge.installer import install_skills
+from skillmint.detectors import detect
+from skillmint.generators import generate_all
+from skillmint.installer import install_skills
 
 
 def detected_ids(root: Path) -> set[str]:
