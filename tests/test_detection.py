@@ -37,6 +37,11 @@ def test_detect_node_bundled_dependencies_list(tmp_path: Path):
     assert "react" in ids
 
 
+def test_detect_node_from_lockfile(tmp_path: Path):
+    (tmp_path / "pnpm-lock.yaml").write_text("lockfileVersion: '9.0'\n", encoding="utf-8")
+    assert "node" in detected_ids(tmp_path)
+
+
 def test_detect_laravel(tmp_path: Path):
     (tmp_path / "artisan").write_text("", encoding="utf-8")
     (tmp_path / "composer.json").write_text('{"require":{"laravel/framework":"^11.0"}}', encoding="utf-8")
