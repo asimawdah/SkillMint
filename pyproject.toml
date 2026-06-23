@@ -30,9 +30,9 @@ dependencies = []
 dev = ["pytest>=8"]
 
 [project.urls]
-Homepage = "https://github.com/asimawdah/SkillForge"
-Repository = "https://github.com/asimawdah/SkillForge"
-Issues = "https://github.com/asimawdah/SkillForge/issues"
+Homepage = "https://github.com/asimawdah/SkillMint"
+Repository = "https://github.com/asimawdah/SkillMint"
+Issues = "https://github.com/asimawdah/SkillMint/issues"
 
 [project.scripts]
 skillmint = "skillmint.cli:main"
