@@ -23,6 +23,20 @@ def test_detect_react(tmp_path: Path):
     assert "react" in detected_ids(tmp_path)
 
 
+def test_detect_node_optional_dependencies(tmp_path: Path):
+    (tmp_path / "package.json").write_text('{"optionalDependencies":{"express":"latest"}}', encoding="utf-8")
+    ids = detected_ids(tmp_path)
+    assert "node" in ids
+    assert "express" in ids
+
+
+def test_detect_node_bundled_dependencies_list(tmp_path: Path):
+    (tmp_path / "package.json").write_text('{"bundledDependencies":["react"]}', encoding="utf-8")
+    ids = detected_ids(tmp_path)
+    assert "node" in ids
+    assert "react" in ids
+
+
 def test_detect_laravel(tmp_path: Path):
     (tmp_path / "artisan").write_text("", encoding="utf-8")
     (tmp_path / "composer.json").write_text('{"require":{"laravel/framework":"^11.0"}}', encoding="utf-8")
