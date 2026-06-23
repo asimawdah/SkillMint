@@ -11,4 +11,12 @@ EXTRA_REGISTRY = {
         avoid=[".dart_tool/", "build/"],
         rules=["Follow idiomatic Dart conventions."],
     ),
+    "node": StackDefinition(
+        id="node",
+        name="Node.js / JavaScript / TypeScript",
+        commands={"Install dependencies": "npm install", "Dev server": "npm run dev", "Build": "npm run build", "Test": "npm test"},
+        directories=["src/", "test/", "scripts/"],
+        avoid=["node_modules/", "dist/", "build/"],
+        rules=["Use the package manager already used by the project."],
+    ),
 }
