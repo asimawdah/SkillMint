@@ -19,4 +19,12 @@ BACKEND_REGISTRY = {
         avoid=[".venv/", "__pycache__/"],
         rules=["Follow the existing Flask app factory or module layout."],
     ),
+    "express": StackDefinition(
+        id="express",
+        name="Express",
+        commands={"Install dependencies": "npm install", "Dev server": "npm run dev", "Start": "npm start", "Test": "npm test"},
+        directories=["src/", "routes/", "controllers/", "middleware/"],
+        avoid=["node_modules/", "dist/"],
+        rules=["Keep route handlers small and move business logic into services."],
+    ),
 }
