@@ -1,13 +1,13 @@
 # AI Agent Instructions
 
-This repository contains SkillForge, a Python CLI that detects a codebase stack and installs AI-ready skills and instruction files.
+This repository contains SkillMint, a Python CLI that detects a codebase stack and installs AI-ready skills and instruction files.
 
 ## Product rule
 
 The main user experience must stay one command:
 
 ```bash
-skillforge
+skillmint
 ```
 
 Do not turn the primary flow into many required commands. Advanced flags are allowed, but the default command should scan, show results, ask what to install, and write files.
@@ -17,7 +17,7 @@ Do not turn the primary flow into many required commands. Advanced flags are all
 ```bash
 python -m pip install -e .[dev]
 pytest -q
-python -m skillforge --version
+python -m skillmint --version
 ```
 
 ## Code rules
