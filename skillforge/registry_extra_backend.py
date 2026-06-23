@@ -11,4 +11,12 @@ BACKEND_REGISTRY = {
         avoid=["target/"],
         rules=["Follow idiomatic Rust ownership and error handling."],
     ),
+    "flask": StackDefinition(
+        id="flask",
+        name="Flask",
+        commands={"Install dependencies": "pip install -r requirements.txt", "Run app": "flask run", "Test": "pytest"},
+        directories=["app/", "templates/", "static/", "tests/"],
+        avoid=[".venv/", "__pycache__/"],
+        rules=["Follow the existing Flask app factory or module layout."],
+    ),
 }
