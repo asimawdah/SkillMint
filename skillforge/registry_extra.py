@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .models import StackDefinition
+from .registry_extra_web import WEB_REGISTRY
 
 EXTRA_REGISTRY = {
     "dart": StackDefinition(
@@ -20,3 +21,4 @@ EXTRA_REGISTRY = {
         rules=["Use the package manager already used by the project."],
     ),
 }
+EXTRA_REGISTRY.update(WEB_REGISTRY)
