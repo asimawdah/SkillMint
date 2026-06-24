@@ -19,6 +19,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="store_true", help="Show SkillMint version and exit.")
     parser.add_argument("--yes", "-y", action="store_true", help="Accept defaults without prompting.")
     parser.add_argument("--no-external", action="store_true", help="Do not download external skills; generate local skills instead.")
+    parser.add_argument("--force", action="store_true", help="Overwrite existing SkillMint-generated files instead of skipping them.")
     parser.add_argument("--root", default=".", help="Project directory. Defaults to current directory.")
     return parser
 
@@ -62,15 +63,28 @@ def main(argv: Optional[List[str]] = None) -> int:
         )
 
     written_files = []
+    skipped_generated: List[str] = []
     if should_generate:
-        written_files = generate_all(root, detections, selected_stack_ids)
+        written_files = generate_all(
+            root,
+            detections,
+            selected_stack_ids,
+            overwrite=args.force,
+            skipped=skipped_generated,
+        )
 
-    install_result = install_skills(root, detections, selected_stack_ids, install_external=install_external)
+    install_result = install_skills(
+        root,
+        detections,
+        selected_stack_ids,
+        install_external=install_external,
+        overwrite=args.force,
+    )
 
     print("\nDone.\n")
     ui.summary("Generated instruction files", [str(p.relative_to(root)) for p in written_files])
     ui.summary("Installed skills", install_result.installed)
-    ui.summary("Skipped", install_result.skipped)
+    ui.summary("Skipped", skipped_generated + install_result.skipped)
     ui.summary("Fallbacks / warnings", install_result.failed)
     print("Your project is now AI-agent ready.")
     return 0
