@@ -50,6 +50,18 @@ SkillMint will:
 5. Generate AI instruction files.
 6. Copy or generate skills into the project.
 
+Preview the planned changes without writing files:
+
+```bash
+skillmint --dry-run
+```
+
+For non-interactive preview in another project directory:
+
+```bash
+skillmint --root /path/to/project --dry-run
+```
+
 For non-interactive usage:
 
 ```bash
@@ -67,6 +79,38 @@ To scan another directory:
 ```bash
 skillmint --root /path/to/project
 ```
+
+By default, SkillMint skips existing generated files so it does not overwrite project-specific instructions that were edited by hand. To intentionally replace existing files, use:
+
+```bash
+skillmint --force
+```
+
+For CI or scripted setup where overwriting is expected:
+
+```bash
+skillmint --yes --force
+```
+
+## Safe workflow
+
+SkillMint should make AI-assisted development safer, not noisier. A normal run should follow this flow:
+
+1. Inspect the project before writing files.
+2. Explain the detected stack and recommended instruction files.
+3. Preview planned output first with `skillmint --dry-run` when reviewing a new repository.
+4. Ask for confirmation before installing external skills.
+5. Skip existing generated files unless `--force` is passed.
+6. Prefer small, readable generated files over large hidden configuration.
+7. Keep generated content easy to review in Git before it is committed.
+
+Recommended review command after running SkillMint:
+
+```bash
+git diff -- AGENTS.md CLAUDE.md .cursor/rules/project.mdc .github/copilot-instructions.md .ai/skills
+```
+
+If the generated files do not match the project, edit them before giving an AI agent permission to modify code.
 
 ## Generated files
 
