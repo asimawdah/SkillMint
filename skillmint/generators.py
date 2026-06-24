@@ -40,6 +40,18 @@ def generate_all(
     return written
 
 
+def preview_generated_skills(detections: List[Detection], selected_stack_ids: Iterable[str]) -> List[tuple[str, str]]:
+    """Return readable local skill previews without writing files."""
+    selected_ids = set(selected_stack_ids)
+    previews: List[tuple[str, str]] = []
+    for detection in detections:
+        stack = detection.stack
+        if detection.id not in selected_ids:
+            continue
+        previews.append((f".ai/skills/{stack.id}/SKILL.md", generate_internal_skill(stack)))
+    return previews
+
+
 def generate_agents_md(stacks: List[StackDefinition]) -> str:
     return _common_document(
         title="AI Agent Instructions",
