@@ -6,7 +6,7 @@ from typing import List, Optional
 
 from . import __version__
 from .detectors import detect
-from .generators import generate_all
+from .generators import generate_all, preview_generated_skills
 from .installer import install_skills
 from .ui import UI
 
@@ -75,6 +75,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not selected_stack_ids:
         print("Nothing selected. No files were changed.")
         return 0
+
+    ui.show_skill_previews(preview_generated_skills(detections, selected_stack_ids))
 
     if args.dry_run:
         print("\nDry run. No files were changed.\n")
