@@ -17,25 +17,36 @@ class InstallResult:
         self.failed: List[str] = []
 
 
-def install_skills(root: Path, detections: List[Detection], selected_stack_ids: List[str], install_external: bool) -> InstallResult:
+def install_skills(
+    root: Path,
+    detections: List[Detection],
+    selected_stack_ids: List[str],
+    install_external: bool,
+    overwrite: bool = False,
+) -> InstallResult:
     result = InstallResult()
-    selected = [d.stack for d in detections if d.id in selected_stack_ids]
+    selected_ids = set(selected_stack_ids)
+    selected = [d.stack for d in detections if d.id in selected_ids]
     for stack in selected:
         if stack.external_skills and install_external:
             for external in stack.external_skills:
                 if _install_external_skill(root, external, result):
                     continue
-                _write_external_fallback(root, stack, external, result)
+                _write_external_fallback(root, stack, external, result, overwrite=overwrite)
         else:
-            _write_internal_skill(root, stack, result)
+            _write_internal_skill(root, stack, result, overwrite=overwrite)
     return result
 
 
-def _write_internal_skill(root: Path, stack: StackDefinition, result: InstallResult) -> None:
+def _write_internal_skill(root: Path, stack: StackDefinition, result: InstallResult, overwrite: bool = False) -> None:
     path = root / ".ai" / "skills" / stack.id / "SKILL.md"
+    relative = str(path.relative_to(root))
+    if path.exists() and not overwrite:
+        result.skipped.append(f"{relative}: already exists")
+        return
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(generate_internal_skill(stack), encoding="utf-8")
-    result.installed.append(str(path.relative_to(root)))
+    result.installed.append(relative)
 
 
 def _install_external_skill(root: Path, external: ExternalSkill, result: InstallResult) -> bool:
@@ -69,8 +80,18 @@ def _install_external_skill(root: Path, external: ExternalSkill, result: Install
         return True
 
 
-def _write_external_fallback(root: Path, stack: StackDefinition, external: ExternalSkill, result: InstallResult) -> None:
+def _write_external_fallback(
+    root: Path,
+    stack: StackDefinition,
+    external: ExternalSkill,
+    result: InstallResult,
+    overwrite: bool = False,
+) -> None:
     path = root / external.install_path / "SKILL.md"
+    relative = str(path.relative_to(root))
+    if path.exists() and not overwrite:
+        result.skipped.append(f"{relative}: already exists")
+        return
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
         f"# {external.name}",
@@ -94,4 +115,4 @@ def _write_external_fallback(root: Path, stack: StackDefinition, external: Exter
     for rule in stack.rules:
         lines.append(f"- {rule}")
     path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
-    result.installed.append(str(path.relative_to(root)))
+    result.installed.append(relative)
