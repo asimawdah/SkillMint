@@ -1,52 +1,53 @@
 # SkillMint
 
-**One command to make your codebase AI-agent ready.**
+**Make any codebase AI-agent ready with one command.**
 
-SkillMint detects your project stack and installs the right AI skills, rules, and instruction files for coding agents.
+SkillMint is a lightweight Python CLI that detects your project stack and installs practical AI skills, rules, and instruction files for coding agents.
 
-It is designed for Claude Code, Cursor, GitHub Copilot, Codex, Hermes, Cline, Roo Code, Aider, and similar coding agents.
+It helps Claude Code, Cursor, GitHub Copilot, Codex, Hermes, Cline, Roo Code, Aider, and similar AI coding agents understand your repository before they edit it.
 
-## Why
+## Why SkillMint?
 
-AI coding agents work better when a repository tells them:
+AI coding agents work better when your repository clearly explains:
 
-- What stack the project uses.
+- What stack and framework the project uses.
 - Which commands install, run, test, and build the project.
 - Which files and directories should not be edited.
 - Which framework conventions should be followed.
-- Which agent instruction files should exist in the repo.
+- Which instruction files should exist for different AI tools.
 
-SkillMint creates that setup with one command.
+SkillMint creates that setup automatically.
 
 ## Install
 
-From source:
-
-```bash
-python -m pip install -e .
-```
-
-Later, when published:
+SkillMint is available on PyPI:
 
 ```bash
 pip install skillmint
 ```
 
-## Usage
-
-Inside any project, run:
+Verify the installation:
 
 ```bash
+skillmint --version
+```
+
+## Quick start
+
+Run SkillMint inside any project directory:
+
+```bash
+cd your-project
 skillmint
 ```
 
 SkillMint will:
 
 1. Scan the current project.
-2. Detect the stack.
+2. Detect the stack and framework.
 3. Show recommended AI skills.
 4. Ask what you want to install.
-5. Generate agent instruction files.
+5. Generate AI instruction files.
 6. Copy or generate skills into the project.
 
 Preview the planned changes without writing files:
@@ -65,6 +66,18 @@ For non-interactive usage:
 
 ```bash
 skillmint --yes
+```
+
+To avoid downloading external skills and only generate local skills:
+
+```bash
+skillmint --no-external
+```
+
+To scan another directory:
+
+```bash
+skillmint --root /path/to/project
 ```
 
 By default, SkillMint skips existing generated files so it does not overwrite project-specific instructions that were edited by hand. To intentionally replace existing files, use:
@@ -101,7 +114,7 @@ If the generated files do not match the project, edit them before giving an AI a
 
 ## Generated files
 
-SkillMint can create:
+Depending on your project, SkillMint can generate:
 
 ```text
 AGENTS.md
@@ -111,20 +124,97 @@ CLAUDE.md
 .ai/skills/<stack>/SKILL.md
 ```
 
-For Flutter projects, SkillMint can install the official Flutter agent skills from:
+These files give AI coding agents clear project-specific context and safer editing rules.
 
-```text
-https://github.com/flutter/skills
-```
+## Supported stacks
 
-External downloads require confirmation.
-
-## Supported stacks in v0.1
+SkillMint currently supports detection and skill generation for:
 
 - Flutter / Dart
-- React / Vite / Node
+- React
+- Node.js / JavaScript / TypeScript
+- Next.js
+- Vue
+- Nuxt
+- Svelte / SvelteKit
+- Angular
+- Python
+- FastAPI
+- Django
+- Flask
 - Laravel / PHP
-- Python / FastAPI / Django
 - Go
+- Rust
 - Docker
 - GitHub Actions
+
+## Trusted external skills
+
+For supported ecosystems, SkillMint can suggest trusted external skill sources, such as:
+
+- Flutter official skills: `https://github.com/flutter/skills`
+- Dart official skills: `https://github.com/dart-lang/skills`
+
+External downloads require confirmation. SkillMint does not silently download external skills in the normal interactive flow.
+
+## Example
+
+Inside a React project:
+
+```bash
+skillmint
+```
+
+SkillMint may generate:
+
+```text
+AGENTS.md
+CLAUDE.md
+.cursor/rules/project.mdc
+.github/copilot-instructions.md
+.ai/skills/react/SKILL.md
+```
+
+The generated instructions include common commands, stack-specific rules, files to avoid, and guidance for AI-assisted edits.
+
+## Development
+
+Clone the repository:
+
+```bash
+git clone https://github.com/asimawdah/SkillMint.git
+cd SkillMint
+```
+
+Install locally with development dependencies:
+
+```bash
+python -m pip install -e .[dev]
+```
+
+Run tests:
+
+```bash
+pytest -q
+```
+
+Run the CLI locally:
+
+```bash
+python -m skillmint --version
+python -m skillmint --root .
+```
+
+## Project goals
+
+SkillMint is designed to stay:
+
+- Simple: one command should be enough for the main flow.
+- Lightweight: no heavy runtime dependencies.
+- Safe: clear confirmation before external downloads.
+- Practical: generated files should be readable and easy to review.
+- Agent-friendly: useful for modern AI coding workflows.
+
+## License
+
+MIT
