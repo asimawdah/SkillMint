@@ -17,6 +17,15 @@ NODE_DEPENDENCY_KEYS = (
     "bundleDependencies",
 )
 
+NODE_MARKER_FILES = (
+    "package.json",
+    "package-lock.json",
+    "npm-shrinkwrap.json",
+    "yarn.lock",
+    "pnpm-lock.yaml",
+    "bun.lockb",
+)
+
 
 def exists(root: Path, relative: str) -> bool:
     return (root / relative).exists()
@@ -50,6 +59,15 @@ def package_names(data: dict) -> set[str]:
     return names
 
 
+def node_marker_reasons(root: Path, pkg: dict) -> list[str]:
+    if pkg:
+        return ["found package.json"]
+    for marker in NODE_MARKER_FILES[1:]:
+        if exists(root, marker):
+            return [f"found {marker}"]
+    return []
+
+
 def add(items: List[Detection], stack_id: str, confidence: int, reasons: List[str]) -> None:
     stack = REGISTRY.get(stack_id)
     if stack is not None:
@@ -68,8 +86,9 @@ def detect(root: Path) -> List[Detection]:
 
     pkg = package_json(root)
     deps = package_names(pkg)
-    if pkg:
-        add(detections, "node", 65, ["found package.json"])
+    node_reasons = node_marker_reasons(root, pkg)
+    if node_reasons:
+        add(detections, "node", 65, node_reasons)
         if "react" in deps:
             add(detections, "react", 90, ["package.json includes react"])
         if "next" in deps or exists(root, "next.config.js") or exists(root, "next.config.mjs"):
