@@ -49,6 +49,18 @@ SkillMint will:
 5. Generate agent instruction files.
 6. Copy or generate skills into the project.
 
+Preview the planned changes without writing files:
+
+```bash
+skillmint --dry-run
+```
+
+For non-interactive preview in another project directory:
+
+```bash
+skillmint --root /path/to/project --dry-run
+```
+
 For non-interactive usage:
 
 ```bash
@@ -73,10 +85,11 @@ SkillMint should make AI-assisted development safer, not noisier. A normal run s
 
 1. Inspect the project before writing files.
 2. Explain the detected stack and recommended instruction files.
-3. Ask for confirmation before installing external skills.
-4. Skip existing generated files unless `--force` is passed.
-5. Prefer small, readable generated files over large hidden configuration.
-6. Keep generated content easy to review in Git before it is committed.
+3. Preview planned output first with `skillmint --dry-run` when reviewing a new repository.
+4. Ask for confirmation before installing external skills.
+5. Skip existing generated files unless `--force` is passed.
+6. Prefer small, readable generated files over large hidden configuration.
+7. Keep generated content easy to review in Git before it is committed.
 
 Recommended review command after running SkillMint:
 
