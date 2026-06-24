@@ -49,6 +49,24 @@ SkillMint will:
 5. Generate agent instruction files.
 6. Copy or generate skills into the project.
 
+For non-interactive usage:
+
+```bash
+skillmint --yes
+```
+
+By default, SkillMint skips existing generated files so it does not overwrite project-specific instructions that were edited by hand. To intentionally replace existing files, use:
+
+```bash
+skillmint --force
+```
+
+For CI or scripted setup where overwriting is expected:
+
+```bash
+skillmint --yes --force
+```
+
 ## Safe workflow
 
 SkillMint should make AI-assisted development safer, not noisier. A normal run should follow this flow:
@@ -56,8 +74,9 @@ SkillMint should make AI-assisted development safer, not noisier. A normal run s
 1. Inspect the project before writing files.
 2. Explain the detected stack and recommended instruction files.
 3. Ask for confirmation before installing external skills.
-4. Prefer small, readable generated files over large hidden configuration.
-5. Keep generated content easy to review in Git before it is committed.
+4. Skip existing generated files unless `--force` is passed.
+5. Prefer small, readable generated files over large hidden configuration.
+6. Keep generated content easy to review in Git before it is committed.
 
 Recommended review command after running SkillMint:
 
