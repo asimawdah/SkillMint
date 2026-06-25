@@ -126,6 +126,18 @@ CLAUDE.md
 
 These files give AI coding agents clear project-specific context and safer editing rules.
 
+Generated instruction files include a **Detection Evidence** section when SkillMint knows why a stack was selected. This makes scanner results easier to review before trusting generated AI instructions.
+
+Example:
+
+```markdown
+## Detection Evidence
+
+### React
+
+- package.json includes react
+```
+
 ## Supported stacks
 
 SkillMint currently supports detection and skill generation for:
