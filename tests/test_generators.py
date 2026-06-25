@@ -34,6 +34,18 @@ def test_generate_all_writes_expected_instruction_files(tmp_path: Path) -> None:
     assert cursor_rule.startswith("---\nalwaysApply: true\n---")
 
 
+def test_generate_all_includes_detection_evidence(tmp_path: Path) -> None:
+    stack = StackDefinition(id="react", name="React")
+    detections = [Detection(stack=stack, confidence=90, reasons=["package.json includes react"])]
+
+    generate_all(tmp_path, detections, selected_stack_ids=["react"])
+
+    agents_md = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
+    assert "## Detection Evidence" in agents_md
+    assert "### React" in agents_md
+    assert "- package.json includes react" in agents_md
+
+
 def test_generate_all_ignores_unselected_stacks(tmp_path: Path) -> None:
     detections = [
         Detection(stack=StackDefinition(id="python", name="Python"), confidence=100),
