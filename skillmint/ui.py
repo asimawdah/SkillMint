@@ -42,6 +42,22 @@ class UI:
                 print(f"    Install path: .ai/skills/{stack.id}/SKILL.md")
         print()
 
+    def show_skill_previews(self, previews: Iterable[tuple[str, str]], *, max_lines: int = 24) -> None:
+        previews = list(previews)
+        if not previews:
+            return
+        print("Generated skill preview:\n")
+        for path, content in previews:
+            print(f"--- {path} ---")
+            lines = content.rstrip().splitlines()
+            visible_lines = lines[:max_lines]
+            for line in visible_lines:
+                print(line)
+            remaining = len(lines) - len(visible_lines)
+            if remaining > 0:
+                print(f"... {remaining} more lines")
+            print()
+
     def confirm(self, question: str, default: bool = True, *, non_interactive_default: Optional[bool] = None) -> bool:
         suffix = "[Y/n]" if default else "[y/N]"
         if self.assume_yes:

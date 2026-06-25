@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from skillmint.generators import generate_all, generate_internal_skill
+from skillmint.generators import generate_all, generate_internal_skill, preview_generated_skills
 from skillmint.models import Detection, StackDefinition
 
 
@@ -46,6 +46,30 @@ def test_generate_all_ignores_unselected_stacks(tmp_path: Path) -> None:
     assert len(written_files) == 4
     assert "- Go" in agents_md
     assert "- Python" not in agents_md
+
+
+def test_preview_generated_skills_returns_selected_skill_content() -> None:
+    detections = [
+        Detection(
+            stack=StackDefinition(
+                id="python",
+                name="Python",
+                commands={"test": "pytest -q"},
+                rules=["Keep functions small and testable."],
+            ),
+            confidence=100,
+        ),
+        Detection(stack=StackDefinition(id="go", name="Go"), confidence=80),
+    ]
+
+    previews = preview_generated_skills(detections, selected_stack_ids=["python"])
+
+    assert len(previews) == 1
+    path, content = previews[0]
+    assert path == ".ai/skills/python/SKILL.md"
+    assert "# Python Skill" in content
+    assert "- test: `pytest -q`" in content
+    assert "# Go Skill" not in content
 
 
 def test_generate_internal_skill_includes_commands_rules_directories_and_avoid_items() -> None:
