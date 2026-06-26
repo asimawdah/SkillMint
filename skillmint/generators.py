@@ -21,11 +21,12 @@ def generate_all(
     selected = [d.stack for d in detections if d.id in selected_ids]
     if not selected:
         return []
+    detection_reasons = _detection_reason_map(detections)
     outputs = {
-        "AGENTS.md": generate_agents_md(selected),
-        "CLAUDE.md": generate_claude_md(selected),
-        ".cursor/rules/project.mdc": generate_cursor_rule(selected),
-        ".github/copilot-instructions.md": generate_copilot_instructions(selected),
+        "AGENTS.md": generate_agents_md(selected, detection_reasons=detection_reasons),
+        "CLAUDE.md": generate_claude_md(selected, detection_reasons=detection_reasons),
+        ".cursor/rules/project.mdc": generate_cursor_rule(selected, detection_reasons=detection_reasons),
+        ".github/copilot-instructions.md": generate_copilot_instructions(selected, detection_reasons=detection_reasons),
     }
     written: List[Path] = []
     for rel_path, content in outputs.items():
@@ -52,11 +53,12 @@ def preview_generated_skills(detections: List[Detection], selected_stack_ids: It
     return previews
 
 
-def generate_agents_md(stacks: List[StackDefinition]) -> str:
+def generate_agents_md(stacks: List[StackDefinition], detection_reasons: Optional[dict[str, List[str]]] = None) -> str:
     return _common_document(
         title="AI Agent Instructions",
         intro="Use these instructions when working inside this repository.",
         stacks=stacks,
+        detection_reasons=detection_reasons,
         extra_sections=[
             ("General Rules", [
                 "Understand the current project structure before changing files.",
@@ -69,11 +71,12 @@ def generate_agents_md(stacks: List[StackDefinition]) -> str:
     )
 
 
-def generate_claude_md(stacks: List[StackDefinition]) -> str:
+def generate_claude_md(stacks: List[StackDefinition], detection_reasons: Optional[dict[str, List[str]]] = None) -> str:
     return _common_document(
         title="Claude Project Instructions",
         intro="Claude should follow these project-specific rules while assisting with this codebase.",
         stacks=stacks,
+        detection_reasons=detection_reasons,
         extra_sections=[
             ("Claude Workflow", [
                 "Inspect relevant files before editing.",
@@ -85,11 +88,12 @@ def generate_claude_md(stacks: List[StackDefinition]) -> str:
     )
 
 
-def generate_cursor_rule(stacks: List[StackDefinition]) -> str:
+def generate_cursor_rule(stacks: List[StackDefinition], detection_reasons: Optional[dict[str, List[str]]] = None) -> str:
     body = _common_document(
         title="Cursor Project Rule",
         intro="Apply these rules to all AI-assisted edits in this repository.",
         stacks=stacks,
+        detection_reasons=detection_reasons,
         extra_sections=[
             ("Cursor Rules", [
                 "Use repository conventions as the source of truth.",
@@ -101,11 +105,12 @@ def generate_cursor_rule(stacks: List[StackDefinition]) -> str:
     return "---\nalwaysApply: true\n---\n\n" + body
 
 
-def generate_copilot_instructions(stacks: List[StackDefinition]) -> str:
+def generate_copilot_instructions(stacks: List[StackDefinition], detection_reasons: Optional[dict[str, List[str]]] = None) -> str:
     return _common_document(
         title="GitHub Copilot Instructions",
         intro="Copilot should use these instructions for suggestions in this repository.",
         stacks=stacks,
+        detection_reasons=detection_reasons,
         extra_sections=[
             ("Suggestion Guidelines", [
                 "Match the style of nearby code.",
@@ -149,13 +154,38 @@ def generate_internal_skill(stack: StackDefinition) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def _common_document(title: str, intro: str, stacks: List[StackDefinition], extra_sections: List[tuple[str, List[str]]]) -> str:
+def _detection_reason_map(detections: List[Detection]) -> dict[str, List[str]]:
+    return {detection.id: detection.reasons for detection in detections if detection.reasons}
+
+
+def _common_document(
+    title: str,
+    intro: str,
+    stacks: List[StackDefinition],
+    extra_sections: List[tuple[str, List[str]]],
+    detection_reasons: Optional[dict[str, List[str]]] = None,
+) -> str:
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     lines = [f"# {title}", "", HEADER, f"Generated date: {generated}", "", intro, ""]
     lines += ["## Detected Stack", ""]
     for stack in stacks:
         lines.append(f"- {stack.name}")
     lines.append("")
+
+    evidence_lines = []
+    if detection_reasons:
+        for stack in stacks:
+            reasons = detection_reasons.get(stack.id, [])
+            if not reasons:
+                continue
+            evidence_lines.append(f"### {stack.name}")
+            evidence_lines.append("")
+            for reason in reasons:
+                evidence_lines.append(f"- {reason}")
+            evidence_lines.append("")
+    if evidence_lines:
+        lines += ["## Detection Evidence", ""]
+        lines.extend(evidence_lines)
 
     commands = [(stack.name, stack.commands) for stack in stacks if stack.commands]
     if commands:
