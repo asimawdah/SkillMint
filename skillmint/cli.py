@@ -8,7 +8,7 @@ from . import __version__
 from .detectors import detect
 from .generators import generate_all, preview_generated_skills
 from .installer import install_skills
-from .instruction_bundle import DEFAULT_INSTRUCTIONS_DIR, planned_instruction_bundle_outputs, write_instruction_bundle
+from .instruction_bundle import DEFAULT_INSTRUCTIONS_DIR, planned_instruction_bundle_outputs, validate_instruction_bundle_dir, write_instruction_bundle
 from .ui import UI
 
 
@@ -64,6 +64,12 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if not root.exists() or not root.is_dir():
         print(f"Project root does not exist or is not a directory: {root}")
+        return 2
+
+    try:
+        validate_instruction_bundle_dir(root, args.instructions_dir)
+    except ValueError as exc:
+        print(f"Invalid --instructions-dir: {exc}")
         return 2
 
     detections = detect(root)
