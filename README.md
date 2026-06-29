@@ -131,6 +131,7 @@ CLAUDE.md
 .ai/instructions/STACKS.md
 .ai/instructions/COMMANDS.md
 .ai/instructions/SAFE_CHANGES.md
+.ai/instructions/NEXT_STEPS.md
 .ai/skills/<stack>/SKILL.md
 ```
 
@@ -138,7 +139,7 @@ These files give AI coding agents clear project-specific context and safer editi
 
 Generated instruction files include a **Detection Evidence** section when SkillMint knows why a stack was selected. This makes scanner results easier to review before trusting generated AI instructions.
 
-The `.ai/instructions/` bundle keeps the detected project profile, commands, and safe-change rules in one clear output folder. See `docs/AI_INSTRUCTION_BUNDLE.md` for details and examples.
+The `.ai/instructions/` bundle keeps the detected project profile, commands, safe-change rules, and next-step checks in one clear output folder. See `docs/AI_INSTRUCTION_BUNDLE.md` for details and examples.
 
 Example:
 
@@ -200,10 +201,11 @@ CLAUDE.md
 .ai/instructions/STACKS.md
 .ai/instructions/COMMANDS.md
 .ai/instructions/SAFE_CHANGES.md
+.ai/instructions/NEXT_STEPS.md
 .ai/skills/react/SKILL.md
 ```
 
-The generated instructions include common commands, stack-specific rules, files to avoid, and guidance for AI-assisted edits.
+The generated instructions include common commands, stack-specific rules, files to avoid, next-step checks, and guidance for AI-assisted edits.
 
 ## Development
 
