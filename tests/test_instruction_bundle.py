@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from skillmint.detectors import detect
-from skillmint.instruction_bundle import planned_instruction_bundle_outputs, write_instruction_bundle
+from skillmint.instruction_bundle import planned_instruction_bundle_outputs, validate_instruction_bundle_dir, write_instruction_bundle
 
 
 def test_instruction_bundle_detects_multiple_project_types_and_writes_folder(tmp_path: Path) -> None:
@@ -68,12 +68,42 @@ def test_instruction_bundle_skips_existing_files_without_force(tmp_path: Path) -
 def test_instruction_bundle_rejects_output_outside_project(tmp_path: Path) -> None:
     (tmp_path / "go.mod").write_text("module example.com/demo\n", encoding="utf-8")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="inside the project root"):
         write_instruction_bundle(tmp_path, detect(tmp_path), selected_stack_ids=["go"], output_dir="../outside")
+
+
+def test_validate_instruction_bundle_dir_accepts_nested_project_path(tmp_path: Path) -> None:
+    assert validate_instruction_bundle_dir(tmp_path, "docs/project-ai") == tmp_path / "docs/project-ai"
+
+
+def test_validate_instruction_bundle_dir_normalises_backslashes(tmp_path: Path) -> None:
+    assert validate_instruction_bundle_dir(tmp_path, r"docs\\project-ai") == tmp_path / "docs/project-ai"
+
+
+def test_validate_instruction_bundle_dir_rejects_absolute_path_outside_project(tmp_path: Path) -> None:
+    outside = tmp_path.parent / "outside-ai"
+
+    with pytest.raises(ValueError, match="inside the project root"):
+        validate_instruction_bundle_dir(tmp_path, str(outside))
 
 
 def test_planned_instruction_bundle_outputs_uses_custom_folder() -> None:
     assert planned_instruction_bundle_outputs("docs/project") == [
+        "docs/project/README.md",
+        "docs/project/STACKS.md",
+        "docs/project/COMMANDS.md",
+        "docs/project/SAFE_CHANGES.md",
+    ]
+
+
+def test_planned_instruction_bundle_outputs_normalises_empty_and_windows_paths() -> None:
+    assert planned_instruction_bundle_outputs("   ") == [
+        ".ai/instructions/README.md",
+        ".ai/instructions/STACKS.md",
+        ".ai/instructions/COMMANDS.md",
+        ".ai/instructions/SAFE_CHANGES.md",
+    ]
+    assert planned_instruction_bundle_outputs(r"docs\\project") == [
         "docs/project/README.md",
         "docs/project/STACKS.md",
         "docs/project/COMMANDS.md",
