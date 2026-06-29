@@ -66,7 +66,7 @@ def _normalise_output_dir(output_dir: str = DEFAULT_INSTRUCTIONS_DIR) -> str:
 
 def _readme(detections: List[Detection]) -> str:
     names = ", ".join(d.name for d in detections)
-    return f"# Project Instructions\n\nDetected stacks: {names}\n\nRead STACKS.md, COMMANDS.md, SAFE_CHANGES.md, and NEXT_STEPS.md before editing.\n"
+    return f"# Project Instructions\n\nDetected stacks: {names}\n\nRead STACKS.md, COMMANDS.md, SAFE_CHANGES.md, and NEXT_STEPS.md before making changes.\n"
 
 
 def _stacks(detections: List[Detection]) -> str:
@@ -94,7 +94,7 @@ def _commands(detections: List[Detection]) -> str:
 
 
 def _safe_changes(detections: List[Detection]) -> str:
-    lines = ["# Safe Change Rules", "", "- Inspect relevant files before editing.", "- Keep changes focused.", "- Add or update tests when behavior changes.", ""]
+    lines = ["# Safe Change Rules", "", "- Inspect relevant files first.", "- Keep changes focused.", "- Add or update tests when behavior changes.", ""]
     avoid = []
     for detection in detections:
         if detection.stack.rules:
@@ -113,14 +113,15 @@ def _safe_changes(detections: List[Detection]) -> str:
 
 def _preferred_validation_command(detection: Detection) -> str | None:
     commands = detection.stack.commands
-    for label, command in commands.items():
-        if "test" in label.lower() or "check" in label.lower() or "analy" in label.lower():
-            return command
+    for keyword in ("test", "check", "analy"):
+        for label, command in commands.items():
+            if keyword in label.lower():
+                return command
     return next(iter(commands.values()), None)
 
 
 def _next_steps(detections: List[Detection]) -> str:
-    lines = ["# Next Steps", "", "1. Confirm detected stacks in STACKS.md.", "2. Run relevant commands from COMMANDS.md.", "3. Follow SAFE_CHANGES.md before editing.", "4. Refresh this folder when project structure changes.", "", "## Per-stack checks", ""]
+    lines = ["# Next Steps", "", "1. Confirm detected stacks in STACKS.md.", "2. Run relevant commands from COMMANDS.md.", "3. Follow SAFE_CHANGES.md.", "4. Refresh this folder when project structure changes.", "", "## Per-stack checks", ""]
     for detection in detections:
         lines += [f"### {detection.name}", ""]
         command = _preferred_validation_command(detection)
