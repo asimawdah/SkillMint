@@ -50,7 +50,11 @@ def validate_instruction_bundle_dir(root: Path, output_dir: str = DEFAULT_INSTRU
     """
 
     resolved_root = root.resolve()
-    target = (resolved_root / _normalise_output_dir(output_dir)).resolve()
+    raw_output_dir = output_dir.strip()
+    if Path(raw_output_dir).is_absolute():
+        target = Path(raw_output_dir).resolve()
+    else:
+        target = (resolved_root / _normalise_output_dir(output_dir)).resolve()
     try:
         target.relative_to(resolved_root)
     except ValueError as exc:
