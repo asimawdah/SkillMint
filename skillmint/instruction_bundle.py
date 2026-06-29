@@ -7,6 +7,7 @@ from .models import Detection
 
 
 DEFAULT_INSTRUCTIONS_DIR = ".ai/instructions"
+INSTRUCTION_BUNDLE_FILES = ["README.md", "STACKS.md", "COMMANDS.md", "SAFE_CHANGES.md"]
 
 
 def write_instruction_bundle(root: Path, detections: List[Detection], selected_stack_ids: Iterable[str], *, output_dir: str = DEFAULT_INSTRUCTIONS_DIR, overwrite: bool = False, skipped: List[str] | None = None) -> List[Path]:
@@ -14,7 +15,7 @@ def write_instruction_bundle(root: Path, detections: List[Detection], selected_s
     selected = [d for d in detections if d.id in selected_ids]
     if not selected:
         return []
-    target = _safe_output_dir(root, output_dir)
+    target = validate_instruction_bundle_dir(root, output_dir)
     outputs = {
         "README.md": _readme(selected),
         "STACKS.md": _stacks(selected),
@@ -24,7 +25,7 @@ def write_instruction_bundle(root: Path, detections: List[Detection], selected_s
     written: List[Path] = []
     for name, content in outputs.items():
         path = target / name
-        relative = path.relative_to(root).as_posix()
+        relative = path.relative_to(root.resolve()).as_posix()
         if path.exists() and not overwrite:
             if skipped is not None:
                 skipped.append(f"{relative}: already exists")
@@ -36,14 +37,30 @@ def write_instruction_bundle(root: Path, detections: List[Detection], selected_s
 
 
 def planned_instruction_bundle_outputs(output_dir: str = DEFAULT_INSTRUCTIONS_DIR) -> List[str]:
-    base = output_dir.strip().strip("/") or DEFAULT_INSTRUCTIONS_DIR
-    return [f"{base}/README.md", f"{base}/STACKS.md", f"{base}/COMMANDS.md", f"{base}/SAFE_CHANGES.md"]
+    base = _normalise_output_dir(output_dir)
+    return [f"{base}/{name}" for name in INSTRUCTION_BUNDLE_FILES]
 
 
-def _safe_output_dir(root: Path, output_dir: str) -> Path:
-    target = (root / (output_dir.strip() or DEFAULT_INSTRUCTIONS_DIR)).resolve()
-    target.relative_to(root.resolve())
+def validate_instruction_bundle_dir(root: Path, output_dir: str = DEFAULT_INSTRUCTIONS_DIR) -> Path:
+    """Return a safe bundle output directory inside the project root.
+
+    SkillMint writes AI instructions into the user's repository. Rejecting paths that
+    escape the project root prevents accidental writes into a parent folder during
+    both real runs and dry-run previews.
+    """
+
+    resolved_root = root.resolve()
+    target = (resolved_root / _normalise_output_dir(output_dir)).resolve()
+    try:
+        target.relative_to(resolved_root)
+    except ValueError as exc:
+        raise ValueError("--instructions-dir must stay inside the project root") from exc
     return target
+
+
+def _normalise_output_dir(output_dir: str = DEFAULT_INSTRUCTIONS_DIR) -> str:
+    cleaned = output_dir.strip().replace("\\", "/").strip("/")
+    return cleaned or DEFAULT_INSTRUCTIONS_DIR
 
 
 def _readme(detections: List[Detection]) -> str:
