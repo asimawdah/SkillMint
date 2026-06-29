@@ -28,6 +28,7 @@ def test_instruction_bundle_detects_multiple_project_types_and_writes_folder(tmp
     relative = sorted(path.relative_to(tmp_path).as_posix() for path in written)
     assert relative == [
         ".ai/instructions/COMMANDS.md",
+        ".ai/instructions/NEXT_STEPS.md",
         ".ai/instructions/README.md",
         ".ai/instructions/SAFE_CHANGES.md",
         ".ai/instructions/STACKS.md",
@@ -44,6 +45,11 @@ def test_instruction_bundle_detects_multiple_project_types_and_writes_folder(tmp
     assert "flutter test" in commands
     assert "pytest" in commands
     assert "docker build ." in commands
+
+    next_steps = (tmp_path / ".ai/instructions/NEXT_STEPS.md").read_text(encoding="utf-8")
+    assert "# Next Steps" in next_steps
+    assert "Confirm detected stacks" in next_steps
+    assert "Validate related changes with `flutter test`" in next_steps
 
 
 def test_instruction_bundle_skips_existing_files_without_force(tmp_path: Path) -> None:
@@ -63,6 +69,7 @@ def test_instruction_bundle_skips_existing_files_without_force(tmp_path: Path) -
     assert (target / "README.md").read_text(encoding="utf-8") == "custom notes\n"
     assert ".ai/instructions/README.md: already exists" in skipped
     assert ".ai/instructions/STACKS.md" in {path.relative_to(tmp_path).as_posix() for path in written}
+    assert ".ai/instructions/NEXT_STEPS.md" in {path.relative_to(tmp_path).as_posix() for path in written}
 
 
 def test_instruction_bundle_rejects_output_outside_project(tmp_path: Path) -> None:
@@ -93,6 +100,7 @@ def test_planned_instruction_bundle_outputs_uses_custom_folder() -> None:
         "docs/project/STACKS.md",
         "docs/project/COMMANDS.md",
         "docs/project/SAFE_CHANGES.md",
+        "docs/project/NEXT_STEPS.md",
     ]
 
 
@@ -102,10 +110,12 @@ def test_planned_instruction_bundle_outputs_normalises_empty_and_windows_paths()
         ".ai/instructions/STACKS.md",
         ".ai/instructions/COMMANDS.md",
         ".ai/instructions/SAFE_CHANGES.md",
+        ".ai/instructions/NEXT_STEPS.md",
     ]
     assert planned_instruction_bundle_outputs(r"docs\\project") == [
         "docs/project/README.md",
         "docs/project/STACKS.md",
         "docs/project/COMMANDS.md",
         "docs/project/SAFE_CHANGES.md",
+        "docs/project/NEXT_STEPS.md",
     ]
