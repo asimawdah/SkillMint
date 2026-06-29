@@ -111,12 +111,20 @@ def _safe_changes(detections: List[Detection]) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
+def _preferred_validation_command(detection: Detection) -> str | None:
+    commands = detection.stack.commands
+    for label, command in commands.items():
+        if "test" in label.lower() or "check" in label.lower() or "analy" in label.lower():
+            return command
+    return next(iter(commands.values()), None)
+
+
 def _next_steps(detections: List[Detection]) -> str:
     lines = ["# Next Steps", "", "1. Confirm detected stacks in STACKS.md.", "2. Run relevant commands from COMMANDS.md.", "3. Follow SAFE_CHANGES.md before editing.", "4. Refresh this folder when project structure changes.", "", "## Per-stack checks", ""]
     for detection in detections:
         lines += [f"### {detection.name}", ""]
-        if detection.stack.commands:
-            command = detection.stack.commands.get("test") or next(iter(detection.stack.commands.values()))
+        command = _preferred_validation_command(detection)
+        if command:
             lines.append(f"- Validate related changes with `{command}`.")
         else:
             lines.append("- Add a validation command when this stack gains tests or checks.")
