@@ -7,7 +7,8 @@ SkillMint can now write a compact instruction bundle into one clear folder:
 ├── README.md
 ├── STACKS.md
 ├── COMMANDS.md
-└── SAFE_CHANGES.md
+├── SAFE_CHANGES.md
+└── NEXT_STEPS.md
 ```
 
 ## Usage
@@ -42,6 +43,16 @@ skillmint --yes --force
 - `STACKS.md`: detected stacks, confidence, and evidence.
 - `COMMANDS.md`: install, run, test, and build commands from the detected stack definitions.
 - `SAFE_CHANGES.md`: focused editing rules and paths that should normally be avoided.
+- `NEXT_STEPS.md`: review checklist and per-stack validation hints for the next safe edit.
+
+## Review flow
+
+After generation, review the bundle in this order:
+
+1. Confirm `STACKS.md` matches the real project.
+2. Copy the relevant command from `COMMANDS.md` before changing code.
+3. Check `SAFE_CHANGES.md` for conventions and paths to avoid.
+4. Use `NEXT_STEPS.md` as the short checklist for the next change.
 
 ## Example output
 
@@ -67,6 +78,17 @@ Confidence: 70%
 Confidence: 80%
 
 - detected Docker files
+```
+
+`NEXT_STEPS.md` may include:
+
+```markdown
+# Next Steps
+
+1. Confirm detected stacks in STACKS.md.
+2. Run relevant commands from COMMANDS.md.
+3. Follow SAFE_CHANGES.md before editing.
+4. Refresh this folder when project structure changes.
 ```
 
 The bundle is generated in addition to the existing root instruction files such as `AGENTS.md`, `CLAUDE.md`, Cursor rules, and Copilot instructions.
