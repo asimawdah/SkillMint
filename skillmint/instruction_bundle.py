@@ -7,7 +7,7 @@ from .models import Detection
 
 
 DEFAULT_INSTRUCTIONS_DIR = ".ai/instructions"
-INSTRUCTION_BUNDLE_FILES = ["README.md", "STACKS.md", "COMMANDS.md", "SAFE_CHANGES.md"]
+INSTRUCTION_BUNDLE_FILES = ["README.md", "STACKS.md", "COMMANDS.md", "SAFE_CHANGES.md", "NEXT_STEPS.md"]
 
 
 def write_instruction_bundle(root: Path, detections: List[Detection], selected_stack_ids: Iterable[str], *, output_dir: str = DEFAULT_INSTRUCTIONS_DIR, overwrite: bool = False, skipped: List[str] | None = None) -> List[Path]:
@@ -21,6 +21,7 @@ def write_instruction_bundle(root: Path, detections: List[Detection], selected_s
         "STACKS.md": _stacks(selected),
         "COMMANDS.md": _commands(selected),
         "SAFE_CHANGES.md": _safe_changes(selected),
+        "NEXT_STEPS.md": _next_steps(selected),
     }
     written: List[Path] = []
     for name, content in outputs.items():
@@ -42,12 +43,7 @@ def planned_instruction_bundle_outputs(output_dir: str = DEFAULT_INSTRUCTIONS_DI
 
 
 def validate_instruction_bundle_dir(root: Path, output_dir: str = DEFAULT_INSTRUCTIONS_DIR) -> Path:
-    """Return a safe bundle output directory inside the project root.
-
-    SkillMint writes AI instructions into the user's repository. Rejecting paths that
-    escape the project root prevents accidental writes into a parent folder during
-    both real runs and dry-run previews.
-    """
+    """Return a safe bundle output directory inside the project root."""
 
     resolved_root = root.resolve()
     raw_output_dir = output_dir.strip()
@@ -70,7 +66,7 @@ def _normalise_output_dir(output_dir: str = DEFAULT_INSTRUCTIONS_DIR) -> str:
 
 def _readme(detections: List[Detection]) -> str:
     names = ", ".join(d.name for d in detections)
-    return f"# Project AI Instructions\n\nDetected stacks: {names}\n\nRead STACKS.md, COMMANDS.md, and SAFE_CHANGES.md before changing the project.\n"
+    return f"# Project Instructions\n\nDetected stacks: {names}\n\nRead STACKS.md, COMMANDS.md, SAFE_CHANGES.md, and NEXT_STEPS.md before editing.\n"
 
 
 def _stacks(detections: List[Detection]) -> str:
@@ -111,5 +107,21 @@ def _safe_changes(detections: List[Detection]) -> str:
         lines += ["## Avoid editing", ""]
         for item in sorted(set(avoid)):
             lines.append(f"- `{item}`")
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _next_steps(detections: List[Detection]) -> str:
+    lines = ["# Next Steps", "", "1. Confirm detected stacks in STACKS.md.", "2. Run relevant commands from COMMANDS.md.", "3. Follow SAFE_CHANGES.md before editing.", "4. Refresh this folder when project structure changes.", "", "## Per-stack checks", ""]
+    for detection in detections:
+        lines += [f"### {detection.name}", ""]
+        if detection.stack.commands:
+            command = detection.stack.commands.get("test") or next(iter(detection.stack.commands.values()))
+            lines.append(f"- Validate related changes with `{command}`.")
+        else:
+            lines.append("- Add a validation command when this stack gains tests or checks.")
+        if detection.stack.directories:
+            paths = ", ".join(f"`{path}`" for path in detection.stack.directories[:3])
+            lines.append(f"- Review expected paths: {paths}.")
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
