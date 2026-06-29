@@ -60,7 +60,8 @@ def validate_instruction_bundle_dir(root: Path, output_dir: str = DEFAULT_INSTRU
 
 def _normalise_output_dir(output_dir: str = DEFAULT_INSTRUCTIONS_DIR) -> str:
     cleaned = output_dir.strip().replace("\\", "/").strip("/")
-    return cleaned or DEFAULT_INSTRUCTIONS_DIR
+    parts = [part for part in cleaned.split("/") if part]
+    return "/".join(parts) or DEFAULT_INSTRUCTIONS_DIR
 
 
 def _readme(detections: List[Detection]) -> str:
