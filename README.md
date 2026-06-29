@@ -68,6 +68,12 @@ For non-interactive usage:
 skillmint --yes
 ```
 
+To generate the instruction bundle in a custom folder:
+
+```bash
+skillmint --yes --instructions-dir docs/project-ai
+```
+
 To avoid downloading external skills and only generate local skills:
 
 ```bash
@@ -107,7 +113,7 @@ SkillMint should make AI-assisted development safer, not noisier. A normal run s
 Recommended review command after running SkillMint:
 
 ```bash
-git diff -- AGENTS.md CLAUDE.md .cursor/rules/project.mdc .github/copilot-instructions.md .ai/skills
+git diff -- AGENTS.md CLAUDE.md .cursor/rules/project.mdc .github/copilot-instructions.md .ai/instructions .ai/skills
 ```
 
 If the generated files do not match the project, edit them before giving an AI agent permission to modify code.
@@ -121,12 +127,18 @@ AGENTS.md
 CLAUDE.md
 .cursor/rules/project.mdc
 .github/copilot-instructions.md
+.ai/instructions/README.md
+.ai/instructions/STACKS.md
+.ai/instructions/COMMANDS.md
+.ai/instructions/SAFE_CHANGES.md
 .ai/skills/<stack>/SKILL.md
 ```
 
 These files give AI coding agents clear project-specific context and safer editing rules.
 
 Generated instruction files include a **Detection Evidence** section when SkillMint knows why a stack was selected. This makes scanner results easier to review before trusting generated AI instructions.
+
+The `.ai/instructions/` bundle keeps the detected project profile, commands, and safe-change rules in one clear output folder. See `docs/AI_INSTRUCTION_BUNDLE.md` for details and examples.
 
 Example:
 
@@ -184,6 +196,10 @@ AGENTS.md
 CLAUDE.md
 .cursor/rules/project.mdc
 .github/copilot-instructions.md
+.ai/instructions/README.md
+.ai/instructions/STACKS.md
+.ai/instructions/COMMANDS.md
+.ai/instructions/SAFE_CHANGES.md
 .ai/skills/react/SKILL.md
 ```
 
