@@ -17,7 +17,7 @@ INSTRUCTION_BUNDLE_ROLES = {
     "next_steps": "NEXT_STEPS.md",
     "machine_manifest": "MANIFEST.json",
 }
-SCHEMA_VERSION = "1.1"
+SCHEMA_VERSION = "1.2"
 
 
 def write_instruction_bundle(root: Path, detections: List[Detection], selected_stack_ids: Iterable[str], *, output_dir: str = DEFAULT_INSTRUCTIONS_DIR, overwrite: bool = False, skipped: List[str] | None = None) -> List[Path]:
@@ -34,13 +34,14 @@ def write_instruction_bundle(root: Path, detections: List[Detection], selected_s
     if not selected:
         return []
     target = validate_instruction_bundle_dir(root, output_dir)
+    bundle_dir = _relative_bundle_dir(root, target)
     outputs = {
         "README.md": _readme(selected),
         "STACKS.md": _stacks(selected),
         "COMMANDS.md": _commands(selected),
         "SAFE_CHANGES.md": _safe_changes(selected),
         "NEXT_STEPS.md": _next_steps(selected),
-        "MANIFEST.json": _manifest(selected, output_dir),
+        "MANIFEST.json": _manifest(selected, bundle_dir),
     }
     written: List[Path] = []
     for name, content in outputs.items():
@@ -83,7 +84,16 @@ def _normalise_output_dir(output_dir: str = DEFAULT_INSTRUCTIONS_DIR) -> str:
     return "/".join(parts) or DEFAULT_INSTRUCTIONS_DIR
 
 
+def _relative_bundle_dir(root: Path, target: Path) -> str:
+    """Return the manifest-facing bundle directory relative to the project root."""
+
+    relative = target.resolve().relative_to(root.resolve()).as_posix()
+    return relative or "."
+
+
 def _bundle_path(base: str, filename: str) -> str:
+    if base == ".":
+        return filename
     return f"{base}/{filename}"
 
 
@@ -174,8 +184,8 @@ def _next_steps(detections: List[Detection]) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def _manifest(detections: List[Detection], output_dir: str = DEFAULT_INSTRUCTIONS_DIR) -> str:
-    base = _normalise_output_dir(output_dir)
+def _manifest(detections: List[Detection], bundle_dir: str = DEFAULT_INSTRUCTIONS_DIR) -> str:
+    base = _normalise_output_dir(bundle_dir)
     stacks = []
     for detection in detections:
         stacks.append(
@@ -199,7 +209,7 @@ def _manifest(detections: List[Detection], output_dir: str = DEFAULT_INSTRUCTION
             "human": role_paths["human_entrypoint"],
             "machine": role_paths["machine_manifest"],
         },
-        "files": [f"{base}/{name}" for name in INSTRUCTION_BUNDLE_FILES],
+        "files": [_bundle_path(base, name) for name in INSTRUCTION_BUNDLE_FILES],
         "files_by_role": role_paths,
         "summary": {
             "stack_count": len(stacks),
