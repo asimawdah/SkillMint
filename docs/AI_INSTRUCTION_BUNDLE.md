@@ -34,6 +34,8 @@ skillmint --yes --instructions-dir docs/project-ai
 
 Absolute paths are accepted only when they resolve inside the selected project root. The generated `MANIFEST.json` still records `bundle_dir`, `files`, `entrypoints`, and `files_by_role` as project-relative paths so generated metadata is portable across machines and CI workspaces.
 
+For predictable dry-runs and portable manifests, custom instruction directories must use direct folder names only. SkillMint rejects `.` and `..` path segments, project-root escapes, and control characters before planning or writing bundle files. Prefer a simple project-relative folder such as `docs/project-ai` or `.ai/instructions`.
+
 Overwrite an existing generated bundle intentionally:
 
 ```bash
