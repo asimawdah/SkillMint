@@ -21,8 +21,16 @@ SCHEMA_VERSION = "1.1"
 
 
 def write_instruction_bundle(root: Path, detections: List[Detection], selected_stack_ids: Iterable[str], *, output_dir: str = DEFAULT_INSTRUCTIONS_DIR, overwrite: bool = False, skipped: List[str] | None = None) -> List[Path]:
-    selected_ids = set(selected_stack_ids)
-    selected = [d for d in detections if d.id in selected_ids]
+    detection_by_id = {detection.id: detection for detection in detections}
+    selected: List[Detection] = []
+    seen_ids: set[str] = set()
+    for stack_id in selected_stack_ids:
+        if stack_id in seen_ids:
+            continue
+        detection = detection_by_id.get(stack_id)
+        if detection is not None:
+            selected.append(detection)
+            seen_ids.add(stack_id)
     if not selected:
         return []
     target = validate_instruction_bundle_dir(root, output_dir)
