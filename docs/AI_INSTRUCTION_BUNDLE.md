@@ -32,6 +32,8 @@ Choose a different folder:
 skillmint --yes --instructions-dir docs/project-ai
 ```
 
+Absolute paths are accepted only when they resolve inside the selected project root. The generated `MANIFEST.json` still records `bundle_dir`, `files`, `entrypoints`, and `files_by_role` as project-relative paths so generated metadata is portable across machines and CI workspaces.
+
 Overwrite an existing generated bundle intentionally:
 
 ```bash
