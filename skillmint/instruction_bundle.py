@@ -18,7 +18,7 @@ INSTRUCTION_BUNDLE_ROLES = {
     "next_steps": "NEXT_STEPS.md",
     "machine_manifest": "MANIFEST.json",
 }
-SCHEMA_VERSION = "1.3"
+SCHEMA_VERSION = "1.4"
 
 
 def write_instruction_bundle(root: Path, detections: List[Detection], selected_stack_ids: Iterable[str], *, output_dir: str = DEFAULT_INSTRUCTIONS_DIR, overwrite: bool = False, skipped: List[str] | None = None) -> List[Path]:
@@ -186,8 +186,24 @@ def _validation_commands(detections: List[Detection]) -> List[str]:
     return commands
 
 
+def _missing_validation_stack_ids(detections: List[Detection]) -> List[str]:
+    return [detection.id for detection in detections if _preferred_validation_command(detection) is None]
+
+
 def _next_steps(detections: List[Detection]) -> str:
-    lines = ["# Next Steps", "", "1. Confirm detected stacks in STACKS.md.", "2. Run relevant commands from COMMANDS.md.", "3. Follow SAFE_CHANGES.md.", "4. Refresh this folder when project structure changes.", "", "## Per-stack checks", ""]
+    missing_validation = _missing_validation_stack_ids(detections)
+    lines = ["# Next Steps", "", "1. Confirm detected stacks in STACKS.md.", "2. Run relevant commands from COMMANDS.md.", "3. Follow SAFE_CHANGES.md.", "4. Refresh this folder when project structure changes.", ""]
+    if missing_validation:
+        lines += [
+            "## Validation gaps",
+            "",
+            "Add or document validation commands for these detected stacks before relying on automated edits:",
+            "",
+        ]
+        for stack_id in missing_validation:
+            lines.append(f"- `{stack_id}`")
+        lines.append("")
+    lines += ["## Per-stack checks", ""]
     for detection in detections:
         lines += [f"### {detection.name}", ""]
         command = _preferred_validation_command(detection)
@@ -219,6 +235,7 @@ def _manifest(detections: List[Detection], bundle_dir: str = DEFAULT_INSTRUCTION
             }
         )
     validation_commands = _validation_commands(detections)
+    missing_validation_stack_ids = _missing_validation_stack_ids(detections)
     role_paths = _bundle_role_paths(base)
     payload = {
         "schema_version": SCHEMA_VERSION,
@@ -235,6 +252,8 @@ def _manifest(detections: List[Detection], bundle_dir: str = DEFAULT_INSTRUCTION
             "stack_ids": [stack["id"] for stack in stacks],
             "validation_commands": validation_commands,
             "has_validation_commands": bool(validation_commands),
+            "missing_validation_stack_ids": missing_validation_stack_ids,
+            "requires_validation_review": bool(missing_validation_stack_ids),
         },
         "stacks": stacks,
     }
