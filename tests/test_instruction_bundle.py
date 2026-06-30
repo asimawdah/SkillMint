@@ -61,31 +61,18 @@ def test_instruction_bundle_writes_machine_readable_manifest(tmp_path: Path) -> 
 
     manifest = json.loads((tmp_path / "docs/project-ai/MANIFEST.json").read_text(encoding="utf-8"))
 
-    assert manifest["schema_version"] == "1.1"
+    assert manifest["schema_version"] == "1.2"
     assert manifest["bundle_dir"] == "docs/project-ai"
-    assert "docs/project-ai/MANIFEST.json" in manifest["files"]
-    assert manifest["summary"] == {
-        "stack_count": 1,
-        "stack_ids": ["python"],
-        "validation_commands": ["pytest"],
-        "has_validation_commands": True,
+    assert manifest["entrypoints"] == {
+        "human": "docs/project-ai/README.md",
+        "machine": "docs/project-ai/MANIFEST.json",
     }
+    assert manifest["files_by_role"]["commands"] == "docs/project-ai/COMMANDS.md"
+    assert manifest["files_by_role"]["safe_change_rules"] == "docs/project-ai/SAFE_CHANGES.md"
+    assert "docs/project-ai/MANIFEST.json" in manifest["files"]
     assert manifest["stacks"][0]["id"] == "python"
     assert manifest["stacks"][0]["validation_command"] == "pytest"
     assert isinstance(manifest["stacks"][0]["commands"], dict)
-
-
-def test_instruction_bundle_manifest_summary_deduplicates_validation_commands(tmp_path: Path) -> None:
-    (tmp_path / "pyproject.toml").write_text("[project]\nname = 'demo'\ndependencies = ['fastapi']\n", encoding="utf-8")
-
-    write_instruction_bundle(tmp_path, detect(tmp_path), selected_stack_ids=["python", "fastapi"])
-
-    manifest = json.loads((tmp_path / ".ai/instructions/MANIFEST.json").read_text(encoding="utf-8"))
-
-    assert manifest["summary"]["stack_count"] == 2
-    assert manifest["summary"]["stack_ids"] == ["python", "fastapi"]
-    assert manifest["summary"]["validation_commands"] == ["pytest"]
-    assert manifest["summary"]["has_validation_commands"] is True
 
 
 def test_instruction_bundle_readme_points_agents_to_manifest(tmp_path: Path) -> None:
@@ -118,11 +105,11 @@ def test_instruction_bundle_skips_existing_files_without_force(tmp_path: Path) -
     assert ".ai/instructions/MANIFEST.json" in {path.relative_to(tmp_path).as_posix() for path in written}
 
 
-def test_instruction_bundle_rejects_parent_directory_escape(tmp_path: Path) -> None:
+def test_instruction_bundle_rejects_output_outside_project(tmp_path: Path) -> None:
     (tmp_path / "go.mod").write_text("module example.com/demo\n", encoding="utf-8")
 
     with pytest.raises(ValueError, match="inside the project root"):
-        write_instruction_bundle(tmp_path, detect(tmp_path), selected_stack_ids=["go"], output_dir="../sibling-ai")
+        write_instruction_bundle(tmp_path, detect(tmp_path), selected_stack_ids=["go"], output_dir="../outside")
 
 
 def test_validate_instruction_bundle_dir_accepts_nested_project_path(tmp_path: Path) -> None:
@@ -130,14 +117,14 @@ def test_validate_instruction_bundle_dir_accepts_nested_project_path(tmp_path: P
 
 
 def test_validate_instruction_bundle_dir_normalises_backslashes(tmp_path: Path) -> None:
-    assert validate_instruction_bundle_dir(tmp_path, r"docs\project-ai") == tmp_path / "docs/project-ai"
+    assert validate_instruction_bundle_dir(tmp_path, r"docs\\project-ai") == tmp_path / "docs/project-ai"
 
 
-def test_validate_instruction_bundle_dir_rejects_absolute_sibling_path(tmp_path: Path) -> None:
-    sibling = tmp_path.parent / "sibling-ai"
+def test_validate_instruction_bundle_dir_rejects_absolute_path_outside_project(tmp_path: Path) -> None:
+    outside = tmp_path.parent / "outside-ai"
 
     with pytest.raises(ValueError, match="inside the project root"):
-        validate_instruction_bundle_dir(tmp_path, str(sibling))
+        validate_instruction_bundle_dir(tmp_path, str(outside))
 
 
 def test_planned_instruction_bundle_outputs_uses_custom_folder() -> None:
@@ -160,7 +147,7 @@ def test_planned_instruction_bundle_outputs_normalises_empty_and_windows_paths()
         ".ai/instructions/NEXT_STEPS.md",
         ".ai/instructions/MANIFEST.json",
     ]
-    assert planned_instruction_bundle_outputs(r"docs\project") == [
+    assert planned_instruction_bundle_outputs(r"docs\\project") == [
         "docs/project/README.md",
         "docs/project/STACKS.md",
         "docs/project/COMMANDS.md",
