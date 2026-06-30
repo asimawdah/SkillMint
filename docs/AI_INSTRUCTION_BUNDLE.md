@@ -46,8 +46,8 @@ skillmint --yes --force
 - `STACKS.md`: detected stacks, confidence, and evidence.
 - `COMMANDS.md`: install, run, test, and build commands from the detected stack definitions.
 - `SAFE_CHANGES.md`: focused editing rules and paths that should normally be avoided.
-- `NEXT_STEPS.md`: review checklist and per-stack validation hints for the next safe edit.
-- `MANIFEST.json`: machine-readable metadata for automation, including schema version, generated file paths, SHA-256 file hashes, role paths, summary metadata, detected stack IDs, commands, directories, avoid rules, and the preferred validation command per stack.
+- `NEXT_STEPS.md`: review checklist, validation gaps, and per-stack validation hints for the next safe edit.
+- `MANIFEST.json`: machine-readable metadata for automation, including schema version, generated file paths, SHA-256 file hashes, role paths, summary metadata, detected stack IDs, commands, directories, avoid rules, preferred validation command per stack, and validation-gap flags.
 
 ## Review flow
 
@@ -58,6 +58,7 @@ After generation, review the bundle in this order:
 3. Copy the relevant command from `COMMANDS.md` before changing code.
 4. Check `SAFE_CHANGES.md` for conventions and paths to avoid.
 5. Use `NEXT_STEPS.md` as the short checklist for the next change.
+6. If `requires_validation_review` is `true`, add or document validation commands before broad scripted use.
 
 ## Manifest schema
 
@@ -65,7 +66,7 @@ The manifest is intentionally small and stable enough for scripts to parse:
 
 ```json
 {
-  "schema_version": "1.3",
+  "schema_version": "1.4",
   "bundle_dir": ".ai/instructions",
   "entrypoints": {
     "human": ".ai/instructions/README.md",
@@ -87,7 +88,9 @@ The manifest is intentionally small and stable enough for scripts to parse:
     "stack_count": 1,
     "stack_ids": ["python"],
     "validation_commands": ["pytest"],
-    "has_validation_commands": true
+    "has_validation_commands": true,
+    "missing_validation_stack_ids": [],
+    "requires_validation_review": false
   },
   "stacks": [
     {
@@ -107,6 +110,8 @@ The manifest is intentionally small and stable enough for scripts to parse:
 Use `schema_version` before building downstream automation around the manifest.
 
 The top-level `summary` block is designed for quick automation checks so scripts do not need to scan every stack object just to know which stacks were selected or which validation commands should run. Use `entrypoints` and `files_by_role` when tooling needs a stable path for a specific purpose instead of guessing filenames.
+
+The `missing_validation_stack_ids` and `requires_validation_review` fields make validation gaps explicit. They are useful for CI and repository setup scripts that should pause for manual review when a detected stack has no known validation command.
 
 The `file_hashes` block records SHA-256 hashes for the generated human-readable bundle files. Automation can use these hashes to detect manual edits, stale generated output, or accidental partial copies without parsing every Markdown file first. The manifest itself is not included in `file_hashes` so the hash list remains deterministic and easy to verify.
 
@@ -146,5 +151,7 @@ Confidence: 80%
 3. Follow SAFE_CHANGES.md before editing.
 4. Refresh this folder when project structure changes.
 ```
+
+When a detected stack has no known validation command, `NEXT_STEPS.md` also includes a `Validation gaps` section listing the stack IDs that need manual review.
 
 The bundle is generated in addition to the existing root instruction files such as `AGENTS.md`, `CLAUDE.md`, Cursor rules, and Copilot instructions.
