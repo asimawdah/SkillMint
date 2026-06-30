@@ -9,15 +9,7 @@ from .models import Detection
 
 DEFAULT_INSTRUCTIONS_DIR = ".ai/instructions"
 INSTRUCTION_BUNDLE_FILES = ["README.md", "STACKS.md", "COMMANDS.md", "SAFE_CHANGES.md", "NEXT_STEPS.md", "MANIFEST.json"]
-INSTRUCTION_BUNDLE_ROLES = {
-    "human_entrypoint": "README.md",
-    "stack_evidence": "STACKS.md",
-    "commands": "COMMANDS.md",
-    "safe_change_rules": "SAFE_CHANGES.md",
-    "next_steps": "NEXT_STEPS.md",
-    "machine_manifest": "MANIFEST.json",
-}
-SCHEMA_VERSION = "1.2"
+SCHEMA_VERSION = "1.0"
 
 
 def write_instruction_bundle(root: Path, detections: List[Detection], selected_stack_ids: Iterable[str], *, output_dir: str = DEFAULT_INSTRUCTIONS_DIR, overwrite: bool = False, skipped: List[str] | None = None) -> List[Path]:
@@ -73,14 +65,6 @@ def _normalise_output_dir(output_dir: str = DEFAULT_INSTRUCTIONS_DIR) -> str:
     cleaned = output_dir.strip().replace("\\", "/").strip("/")
     parts = [part for part in cleaned.split("/") if part]
     return "/".join(parts) or DEFAULT_INSTRUCTIONS_DIR
-
-
-def _bundle_path(base: str, filename: str) -> str:
-    return f"{base}/{filename}"
-
-
-def _bundle_role_paths(base: str) -> dict[str, str]:
-    return {role: _bundle_path(base, filename) for role, filename in INSTRUCTION_BUNDLE_ROLES.items()}
 
 
 def _readme(detections: List[Detection]) -> str:
@@ -183,16 +167,10 @@ def _manifest(detections: List[Detection], output_dir: str = DEFAULT_INSTRUCTION
             }
         )
     validation_commands = _validation_commands(detections)
-    role_paths = _bundle_role_paths(base)
     payload = {
         "schema_version": SCHEMA_VERSION,
         "bundle_dir": base,
-        "entrypoints": {
-            "human": role_paths["human_entrypoint"],
-            "machine": role_paths["machine_manifest"],
-        },
         "files": [f"{base}/{name}" for name in INSTRUCTION_BUNDLE_FILES],
-        "files_by_role": role_paths,
         "summary": {
             "stack_count": len(stacks),
             "stack_ids": [stack["id"] for stack in stacks],
@@ -201,4 +179,4 @@ def _manifest(detections: List[Detection], output_dir: str = DEFAULT_INSTRUCTION
         },
         "stacks": stacks,
     }
-    return json.dumps(payload, indent=2, sort_keys=True) + "\n
+    return json.dumps(payload, indent=2, sort_keys=True) + "\n"
