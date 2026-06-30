@@ -9,7 +9,7 @@ from .models import Detection
 
 DEFAULT_INSTRUCTIONS_DIR = ".ai/instructions"
 INSTRUCTION_BUNDLE_FILES = ["README.md", "STACKS.md", "COMMANDS.md", "SAFE_CHANGES.md", "NEXT_STEPS.md", "MANIFEST.json"]
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"
 
 
 def write_instruction_bundle(root: Path, detections: List[Detection], selected_stack_ids: Iterable[str], *, output_dir: str = DEFAULT_INSTRUCTIONS_DIR, overwrite: bool = False, skipped: List[str] | None = None) -> List[Path]:
@@ -123,6 +123,17 @@ def _preferred_validation_command(detection: Detection) -> str | None:
     return next(iter(commands.values()), None)
 
 
+def _validation_commands(detections: List[Detection]) -> List[str]:
+    commands = []
+    seen = set()
+    for detection in detections:
+        command = _preferred_validation_command(detection)
+        if command and command not in seen:
+            commands.append(command)
+            seen.add(command)
+    return commands
+
+
 def _next_steps(detections: List[Detection]) -> str:
     lines = ["# Next Steps", "", "1. Confirm detected stacks in STACKS.md.", "2. Run relevant commands from COMMANDS.md.", "3. Follow SAFE_CHANGES.md.", "4. Refresh this folder when project structure changes.", "", "## Per-stack checks", ""]
     for detection in detections:
@@ -155,10 +166,17 @@ def _manifest(detections: List[Detection], output_dir: str = DEFAULT_INSTRUCTION
                 "validation_command": _preferred_validation_command(detection),
             }
         )
+    validation_commands = _validation_commands(detections)
     payload = {
         "schema_version": SCHEMA_VERSION,
         "bundle_dir": base,
         "files": [f"{base}/{name}" for name in INSTRUCTION_BUNDLE_FILES],
+        "summary": {
+            "stack_count": len(stacks),
+            "stack_ids": [stack["id"] for stack in stacks],
+            "validation_commands": validation_commands,
+            "has_validation_commands": bool(validation_commands),
+        },
         "stacks": stacks,
     }
     return json.dumps(payload, indent=2, sort_keys=True) + "\n"
