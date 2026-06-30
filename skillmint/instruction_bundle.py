@@ -60,9 +60,10 @@ def validate_instruction_bundle_dir(root: Path, output_dir: str = DEFAULT_INSTRU
     """Return a safe bundle output directory inside the project root."""
 
     resolved_root = root.resolve()
+    cleaned_output_dir = _clean_output_dir(output_dir)
     normalised_output_dir = _normalise_output_dir(output_dir)
-    if Path(normalised_output_dir).is_absolute():
-        target = Path(normalised_output_dir).resolve()
+    if Path(cleaned_output_dir).is_absolute():
+        target = Path(cleaned_output_dir).resolve()
     else:
         target = (resolved_root / normalised_output_dir).resolve()
     try:
@@ -72,8 +73,12 @@ def validate_instruction_bundle_dir(root: Path, output_dir: str = DEFAULT_INSTRU
     return target
 
 
+def _clean_output_dir(output_dir: str = DEFAULT_INSTRUCTIONS_DIR) -> str:
+    return output_dir.strip().replace("\\", "/")
+
+
 def _normalise_output_dir(output_dir: str = DEFAULT_INSTRUCTIONS_DIR) -> str:
-    cleaned = output_dir.strip().replace("\\", "/").strip("/")
+    cleaned = _clean_output_dir(output_dir).strip("/")
     parts = [part for part in cleaned.split("/") if part]
     if not parts:
         return DEFAULT_INSTRUCTIONS_DIR
