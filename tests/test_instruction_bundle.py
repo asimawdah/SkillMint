@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -43,7 +44,7 @@ def test_instruction_bundle_writes_machine_readable_manifest(tmp_path: Path) -> 
     write_instruction_bundle(tmp_path, detect(tmp_path), selected_stack_ids=["python"], output_dir="docs/project-ai")
 
     manifest = json.loads((tmp_path / "docs/project-ai/MANIFEST.json").read_text(encoding="utf-8"))
-    assert manifest["schema_version"] == "1.2"
+    assert manifest["schema_version"] == "1.3"
     assert manifest["bundle_dir"] == "docs/project-ai"
     assert manifest["entrypoints"] == {"human": "docs/project-ai/README.md", "machine": "docs/project-ai/MANIFEST.json"}
     assert manifest["files_by_role"]["commands"] == "docs/project-ai/COMMANDS.md"
@@ -56,6 +57,24 @@ def test_instruction_bundle_writes_machine_readable_manifest(tmp_path: Path) -> 
     }
     assert manifest["stacks"][0]["id"] == "python"
     assert manifest["stacks"][0]["validation_command"] == "pytest"
+
+
+def test_instruction_bundle_manifest_includes_file_hashes(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text("[project]\nname = 'demo'\n", encoding="utf-8")
+    write_instruction_bundle(tmp_path, detect(tmp_path), selected_stack_ids=["python"])
+
+    manifest = json.loads((tmp_path / ".ai/instructions/MANIFEST.json").read_text(encoding="utf-8"))
+    hashes = manifest["file_hashes"]
+    assert set(hashes) == {
+        ".ai/instructions/README.md",
+        ".ai/instructions/STACKS.md",
+        ".ai/instructions/COMMANDS.md",
+        ".ai/instructions/SAFE_CHANGES.md",
+        ".ai/instructions/NEXT_STEPS.md",
+    }
+    for relative_path, digest in hashes.items():
+        content = (tmp_path / relative_path).read_text(encoding="utf-8")
+        assert digest == hashlib.sha256(content.encode("utf-8")).hexdigest()
 
 
 def test_instruction_bundle_manifest_summary_deduplicates_validation_commands(tmp_path: Path) -> None:
@@ -82,6 +101,7 @@ def test_instruction_bundle_manifest_uses_relative_paths_for_absolute_output_dir
     assert manifest["entrypoints"] == {"human": "docs/project-ai/README.md", "machine": "docs/project-ai/MANIFEST.json"}
     assert manifest["files_by_role"]["machine_manifest"] == "docs/project-ai/MANIFEST.json"
     assert all(not path.startswith(str(tmp_path)) for path in manifest["files"])
+    assert all(path.startswith("docs/project-ai/") for path in manifest["file_hashes"])
 
 
 def test_readme_documents_generated_manifest_output() -> None:
