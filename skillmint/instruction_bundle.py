@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Iterable, List
 
@@ -7,7 +8,8 @@ from .models import Detection
 
 
 DEFAULT_INSTRUCTIONS_DIR = ".ai/instructions"
-INSTRUCTION_BUNDLE_FILES = ["README.md", "STACKS.md", "COMMANDS.md", "SAFE_CHANGES.md", "NEXT_STEPS.md"]
+INSTRUCTION_BUNDLE_FILES = ["README.md", "STACKS.md", "COMMANDS.md", "SAFE_CHANGES.md", "NEXT_STEPS.md", "MANIFEST.json"]
+SCHEMA_VERSION = "1.0"
 
 
 def write_instruction_bundle(root: Path, detections: List[Detection], selected_stack_ids: Iterable[str], *, output_dir: str = DEFAULT_INSTRUCTIONS_DIR, overwrite: bool = False, skipped: List[str] | None = None) -> List[Path]:
@@ -22,6 +24,7 @@ def write_instruction_bundle(root: Path, detections: List[Detection], selected_s
         "COMMANDS.md": _commands(selected),
         "SAFE_CHANGES.md": _safe_changes(selected),
         "NEXT_STEPS.md": _next_steps(selected),
+        "MANIFEST.json": _manifest(selected, output_dir),
     }
     written: List[Path] = []
     for name, content in outputs.items():
@@ -66,7 +69,7 @@ def _normalise_output_dir(output_dir: str = DEFAULT_INSTRUCTIONS_DIR) -> str:
 
 def _readme(detections: List[Detection]) -> str:
     names = ", ".join(d.name for d in detections)
-    return f"# Project Instructions\n\nDetected stacks: {names}\n\nRead STACKS.md, COMMANDS.md, SAFE_CHANGES.md, and NEXT_STEPS.md before making changes.\n"
+    return f"# Project Instructions\n\nDetected stacks: {names}\n\nRead MANIFEST.json first for machine-readable metadata, then STACKS.md, COMMANDS.md, SAFE_CHANGES.md, and NEXT_STEPS.md before making changes.\n"
 
 
 def _stacks(detections: List[Detection]) -> str:
@@ -134,3 +137,28 @@ def _next_steps(detections: List[Detection]) -> str:
             lines.append(f"- Review expected paths: {paths}.")
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
+
+
+def _manifest(detections: List[Detection], output_dir: str = DEFAULT_INSTRUCTIONS_DIR) -> str:
+    base = _normalise_output_dir(output_dir)
+    stacks = []
+    for detection in detections:
+        stacks.append(
+            {
+                "id": detection.id,
+                "name": detection.name,
+                "confidence": detection.confidence,
+                "reasons": list(detection.reasons),
+                "commands": dict(detection.stack.commands),
+                "directories": list(detection.stack.directories),
+                "avoid": sorted(set(detection.stack.avoid)),
+                "validation_command": _preferred_validation_command(detection),
+            }
+        )
+    payload = {
+        "schema_version": SCHEMA_VERSION,
+        "bundle_dir": base,
+        "files": [f"{base}/{name}" for name in INSTRUCTION_BUNDLE_FILES],
+        "stacks": stacks,
+    }
+    return json.dumps(payload, indent=2, sort_keys=True) + "\n"
