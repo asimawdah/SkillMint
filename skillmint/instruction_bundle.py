@@ -60,11 +60,11 @@ def validate_instruction_bundle_dir(root: Path, output_dir: str = DEFAULT_INSTRU
     """Return a safe bundle output directory inside the project root."""
 
     resolved_root = root.resolve()
-    raw_output_dir = output_dir.strip()
-    if Path(raw_output_dir).is_absolute():
-        target = Path(raw_output_dir).resolve()
+    normalised_output_dir = _normalise_output_dir(output_dir)
+    if Path(normalised_output_dir).is_absolute():
+        target = Path(normalised_output_dir).resolve()
     else:
-        target = (resolved_root / _normalise_output_dir(output_dir)).resolve()
+        target = (resolved_root / normalised_output_dir).resolve()
     try:
         target.relative_to(resolved_root)
     except ValueError as exc:
@@ -75,7 +75,14 @@ def validate_instruction_bundle_dir(root: Path, output_dir: str = DEFAULT_INSTRU
 def _normalise_output_dir(output_dir: str = DEFAULT_INSTRUCTIONS_DIR) -> str:
     cleaned = output_dir.strip().replace("\\", "/").strip("/")
     parts = [part for part in cleaned.split("/") if part]
-    return "/".join(parts) or DEFAULT_INSTRUCTIONS_DIR
+    if not parts:
+        return DEFAULT_INSTRUCTIONS_DIR
+    unsafe_parts = {".", ".."}
+    if any(part in unsafe_parts for part in parts):
+        raise ValueError("--instructions-dir must use direct folder names without . or .. segments")
+    if any(any(ord(char) < 32 for char in part) for part in parts):
+        raise ValueError("--instructions-dir must not contain control characters")
+    return "/".join(parts)
 
 
 def _relative_bundle_dir(root: Path, target: Path) -> str:
