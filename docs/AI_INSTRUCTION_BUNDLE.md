@@ -45,7 +45,7 @@ skillmint --yes --force
 - `COMMANDS.md`: install, run, test, and build commands from the detected stack definitions.
 - `SAFE_CHANGES.md`: focused editing rules and paths that should normally be avoided.
 - `NEXT_STEPS.md`: review checklist and per-stack validation hints for the next safe edit.
-- `MANIFEST.json`: machine-readable metadata for AI agents and automation tools, including schema version, generated file paths, detected stack IDs, commands, directories, avoid rules, and the preferred validation command per stack.
+- `MANIFEST.json`: machine-readable metadata for AI agents and automation tools, including schema version, generated file paths, summary metadata, detected stack IDs, commands, directories, avoid rules, and the preferred validation command per stack.
 
 ## Review flow
 
@@ -63,9 +63,15 @@ The manifest is intentionally small and stable enough for scripts to parse:
 
 ```json
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "bundle_dir": ".ai/instructions",
   "files": [".ai/instructions/README.md"],
+  "summary": {
+    "stack_count": 1,
+    "stack_ids": ["python"],
+    "validation_commands": ["pytest"],
+    "has_validation_commands": true
+  },
   "stacks": [
     {
       "id": "python",
@@ -82,6 +88,8 @@ The manifest is intentionally small and stable enough for scripts to parse:
 ```
 
 Use `schema_version` before building downstream automation around the manifest.
+
+The top-level `summary` block is designed for quick automation checks so scripts do not need to scan every stack object just to know which stacks were selected or which validation commands should run.
 
 ## Example output
 
