@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -28,6 +29,7 @@ def test_instruction_bundle_detects_multiple_project_types_and_writes_folder(tmp
     relative = sorted(path.relative_to(tmp_path).as_posix() for path in written)
     assert relative == [
         ".ai/instructions/COMMANDS.md",
+        ".ai/instructions/MANIFEST.json",
         ".ai/instructions/NEXT_STEPS.md",
         ".ai/instructions/README.md",
         ".ai/instructions/SAFE_CHANGES.md",
@@ -52,6 +54,30 @@ def test_instruction_bundle_detects_multiple_project_types_and_writes_folder(tmp
     assert "Validate related changes with `flutter test`" in next_steps
 
 
+def test_instruction_bundle_writes_machine_readable_manifest(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text("[project]\nname = 'demo'\n", encoding="utf-8")
+
+    write_instruction_bundle(tmp_path, detect(tmp_path), selected_stack_ids=["python"], output_dir="docs/project-ai")
+
+    manifest = json.loads((tmp_path / "docs/project-ai/MANIFEST.json").read_text(encoding="utf-8"))
+
+    assert manifest["schema_version"] == "1.0"
+    assert manifest["bundle_dir"] == "docs/project-ai"
+    assert "docs/project-ai/MANIFEST.json" in manifest["files"]
+    assert manifest["stacks"][0]["id"] == "python"
+    assert manifest["stacks"][0]["validation_command"] == "pytest"
+    assert isinstance(manifest["stacks"][0]["commands"], dict)
+
+
+def test_instruction_bundle_readme_points_agents_to_manifest(tmp_path: Path) -> None:
+    (tmp_path / "go.mod").write_text("module example.com/demo\n", encoding="utf-8")
+
+    write_instruction_bundle(tmp_path, detect(tmp_path), selected_stack_ids=["go"])
+
+    readme = (tmp_path / ".ai/instructions/README.md").read_text(encoding="utf-8")
+    assert "Read MANIFEST.json first" in readme
+
+
 def test_instruction_bundle_skips_existing_files_without_force(tmp_path: Path) -> None:
     (tmp_path / "go.mod").write_text("module example.com/demo\n", encoding="utf-8")
     target = tmp_path / ".ai/instructions"
@@ -70,6 +96,7 @@ def test_instruction_bundle_skips_existing_files_without_force(tmp_path: Path) -
     assert ".ai/instructions/README.md: already exists" in skipped
     assert ".ai/instructions/STACKS.md" in {path.relative_to(tmp_path).as_posix() for path in written}
     assert ".ai/instructions/NEXT_STEPS.md" in {path.relative_to(tmp_path).as_posix() for path in written}
+    assert ".ai/instructions/MANIFEST.json" in {path.relative_to(tmp_path).as_posix() for path in written}
 
 
 def test_instruction_bundle_rejects_output_outside_project(tmp_path: Path) -> None:
@@ -101,6 +128,7 @@ def test_planned_instruction_bundle_outputs_uses_custom_folder() -> None:
         "docs/project/COMMANDS.md",
         "docs/project/SAFE_CHANGES.md",
         "docs/project/NEXT_STEPS.md",
+        "docs/project/MANIFEST.json",
     ]
 
 
@@ -111,6 +139,7 @@ def test_planned_instruction_bundle_outputs_normalises_empty_and_windows_paths()
         ".ai/instructions/COMMANDS.md",
         ".ai/instructions/SAFE_CHANGES.md",
         ".ai/instructions/NEXT_STEPS.md",
+        ".ai/instructions/MANIFEST.json",
     ]
     assert planned_instruction_bundle_outputs(r"docs\\project") == [
         "docs/project/README.md",
@@ -118,4 +147,5 @@ def test_planned_instruction_bundle_outputs_normalises_empty_and_windows_paths()
         "docs/project/COMMANDS.md",
         "docs/project/SAFE_CHANGES.md",
         "docs/project/NEXT_STEPS.md",
+        "docs/project/MANIFEST.json",
     ]
