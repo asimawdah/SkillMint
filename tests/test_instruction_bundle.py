@@ -156,7 +156,7 @@ def test_instruction_bundle_skips_existing_files_without_force(tmp_path: Path) -
 
 def test_instruction_bundle_rejects_parent_directory_escape(tmp_path: Path) -> None:
     (tmp_path / "go.mod").write_text("module example.com/demo\n", encoding="utf-8")
-    with pytest.raises(ValueError, match="inside the project root"):
+    with pytest.raises(ValueError, match="without . or .. segments"):
         write_instruction_bundle(tmp_path, detect(tmp_path), selected_stack_ids=["go"], output_dir="../sibling-ai")
 
 
@@ -172,6 +172,20 @@ def test_validate_instruction_bundle_dir_rejects_absolute_sibling_path(tmp_path:
     sibling = tmp_path.parent / "sibling-ai"
     with pytest.raises(ValueError, match="inside the project root"):
         validate_instruction_bundle_dir(tmp_path, str(sibling))
+
+
+def test_instruction_bundle_rejects_ambiguous_relative_segments(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="without . or .. segments"):
+        validate_instruction_bundle_dir(tmp_path, "docs/../.ai/instructions")
+    with pytest.raises(ValueError, match="without . or .. segments"):
+        planned_instruction_bundle_outputs("./docs/project-ai")
+
+
+def test_instruction_bundle_rejects_control_characters_in_output_dir(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="control characters"):
+        validate_instruction_bundle_dir(tmp_path, "docs/project\nai")
+    with pytest.raises(ValueError, match="control characters"):
+        planned_instruction_bundle_outputs("docs/project\tai")
 
 
 def test_planned_instruction_bundle_outputs_uses_custom_folder() -> None:
