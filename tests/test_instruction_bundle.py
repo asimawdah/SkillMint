@@ -43,7 +43,7 @@ def test_instruction_bundle_writes_machine_readable_manifest(tmp_path: Path) -> 
     write_instruction_bundle(tmp_path, detect(tmp_path), selected_stack_ids=["python"], output_dir="docs/project-ai")
 
     manifest = json.loads((tmp_path / "docs/project-ai/MANIFEST.json").read_text(encoding="utf-8"))
-    assert manifest["schema_version"] == "1.1"
+    assert manifest["schema_version"] == "1.2"
     assert manifest["bundle_dir"] == "docs/project-ai"
     assert manifest["entrypoints"] == {"human": "docs/project-ai/README.md", "machine": "docs/project-ai/MANIFEST.json"}
     assert manifest["files_by_role"]["commands"] == "docs/project-ai/COMMANDS.md"
@@ -68,6 +68,20 @@ def test_instruction_bundle_manifest_summary_deduplicates_validation_commands(tm
     assert manifest["summary"]["validation_commands"] == ["pytest"]
     assert manifest["files_by_role"]["human_entrypoint"] == ".ai/instructions/README.md"
     assert manifest["files_by_role"]["machine_manifest"] == ".ai/instructions/MANIFEST.json"
+
+
+def test_instruction_bundle_manifest_uses_relative_paths_for_absolute_output_dir(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text("[project]\nname = 'demo'\n", encoding="utf-8")
+    absolute_output_dir = tmp_path / "docs" / "project-ai"
+
+    written = write_instruction_bundle(tmp_path, detect(tmp_path), selected_stack_ids=["python"], output_dir=str(absolute_output_dir))
+
+    assert absolute_output_dir / "MANIFEST.json" in written
+    manifest = json.loads((absolute_output_dir / "MANIFEST.json").read_text(encoding="utf-8"))
+    assert manifest["bundle_dir"] == "docs/project-ai"
+    assert manifest["entrypoints"] == {"human": "docs/project-ai/README.md", "machine": "docs/project-ai/MANIFEST.json"}
+    assert manifest["files_by_role"]["machine_manifest"] == "docs/project-ai/MANIFEST.json"
+    assert all(not path.startswith(str(tmp_path)) for path in manifest["files"])
 
 
 def test_instruction_bundle_readme_points_to_manifest(tmp_path: Path) -> None:
