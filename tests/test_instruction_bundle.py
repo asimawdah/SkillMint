@@ -84,6 +84,13 @@ def test_instruction_bundle_manifest_uses_relative_paths_for_absolute_output_dir
     assert all(not path.startswith(str(tmp_path)) for path in manifest["files"])
 
 
+def test_readme_documents_generated_manifest_output() -> None:
+    readme = Path("README.md").read_text(encoding="utf-8")
+
+    assert ".ai/instructions/MANIFEST.json" in readme
+    assert "machine-readable manifest" in readme
+
+
 def test_instruction_bundle_readme_points_to_manifest(tmp_path: Path) -> None:
     (tmp_path / "go.mod").write_text("module example.com/demo\n", encoding="utf-8")
     write_instruction_bundle(tmp_path, detect(tmp_path), selected_stack_ids=["go"])
