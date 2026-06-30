@@ -44,7 +44,7 @@ def test_instruction_bundle_writes_machine_readable_manifest(tmp_path: Path) -> 
     write_instruction_bundle(tmp_path, detect(tmp_path), selected_stack_ids=["python"], output_dir="docs/project-ai")
 
     manifest = json.loads((tmp_path / "docs/project-ai/MANIFEST.json").read_text(encoding="utf-8"))
-    assert manifest["schema_version"] == "1.3"
+    assert manifest["schema_version"] == "1.4"
     assert manifest["bundle_dir"] == "docs/project-ai"
     assert manifest["entrypoints"] == {"human": "docs/project-ai/README.md", "machine": "docs/project-ai/MANIFEST.json"}
     assert manifest["files_by_role"]["commands"] == "docs/project-ai/COMMANDS.md"
@@ -54,6 +54,8 @@ def test_instruction_bundle_writes_machine_readable_manifest(tmp_path: Path) -> 
         "stack_ids": ["python"],
         "validation_commands": ["pytest"],
         "has_validation_commands": True,
+        "missing_validation_stack_ids": [],
+        "requires_validation_review": False,
     }
     assert manifest["stacks"][0]["id"] == "python"
     assert manifest["stacks"][0]["validation_command"] == "pytest"
@@ -85,8 +87,27 @@ def test_instruction_bundle_manifest_summary_deduplicates_validation_commands(tm
     assert manifest["summary"]["stack_count"] == 2
     assert manifest["summary"]["stack_ids"] == ["python", "fastapi"]
     assert manifest["summary"]["validation_commands"] == ["pytest"]
+    assert manifest["summary"]["missing_validation_stack_ids"] == []
+    assert manifest["summary"]["requires_validation_review"] is False
     assert manifest["files_by_role"]["human_entrypoint"] == ".ai/instructions/README.md"
     assert manifest["files_by_role"]["machine_manifest"] == ".ai/instructions/MANIFEST.json"
+
+
+def test_instruction_bundle_flags_stacks_without_validation_commands(tmp_path: Path) -> None:
+    (tmp_path / ".github" / "workflows").mkdir(parents=True)
+    (tmp_path / ".github" / "workflows" / "ci.yml").write_text("name: CI\n", encoding="utf-8")
+
+    write_instruction_bundle(tmp_path, detect(tmp_path), selected_stack_ids=["github-actions"])
+
+    manifest = json.loads((tmp_path / ".ai/instructions/MANIFEST.json").read_text(encoding="utf-8"))
+    assert manifest["summary"]["missing_validation_stack_ids"] == ["github-actions"]
+    assert manifest["summary"]["requires_validation_review"] is True
+    assert manifest["summary"]["has_validation_commands"] is False
+    assert manifest["stacks"][0]["validation_command"] is None
+
+    next_steps = (tmp_path / ".ai/instructions/NEXT_STEPS.md").read_text(encoding="utf-8")
+    assert "## Validation gaps" in next_steps
+    assert "`github-actions`" in next_steps
 
 
 def test_instruction_bundle_manifest_uses_relative_paths_for_absolute_output_dir(tmp_path: Path) -> None:
