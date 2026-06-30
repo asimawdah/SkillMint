@@ -45,13 +45,13 @@ skillmint --yes --force
 - `COMMANDS.md`: install, run, test, and build commands from the detected stack definitions.
 - `SAFE_CHANGES.md`: focused editing rules and paths that should normally be avoided.
 - `NEXT_STEPS.md`: review checklist and per-stack validation hints for the next safe edit.
-- `MANIFEST.json`: machine-readable metadata for AI agents and automation tools, including schema version, generated file paths, summary metadata, detected stack IDs, commands, directories, avoid rules, and the preferred validation command per stack.
+- `MANIFEST.json`: machine-readable metadata for automation, including schema version, generated file paths, role paths, summary metadata, detected stack IDs, commands, directories, avoid rules, and the preferred validation command per stack.
 
 ## Review flow
 
 After generation, review the bundle in this order:
 
-1. Read `MANIFEST.json` if the bundle is being consumed by an automation or AI agent.
+1. Read `MANIFEST.json` if the bundle is being consumed programmatically.
 2. Confirm `STACKS.md` matches the real project.
 3. Copy the relevant command from `COMMANDS.md` before changing code.
 4. Check `SAFE_CHANGES.md` for conventions and paths to avoid.
@@ -63,9 +63,21 @@ The manifest is intentionally small and stable enough for scripts to parse:
 
 ```json
 {
-  "schema_version": "1.1",
+  "schema_version": "1.2",
   "bundle_dir": ".ai/instructions",
+  "entrypoints": {
+    "human": ".ai/instructions/README.md",
+    "machine": ".ai/instructions/MANIFEST.json"
+  },
   "files": [".ai/instructions/README.md"],
+  "files_by_role": {
+    "human_entrypoint": ".ai/instructions/README.md",
+    "stack_evidence": ".ai/instructions/STACKS.md",
+    "commands": ".ai/instructions/COMMANDS.md",
+    "safe_change_rules": ".ai/instructions/SAFE_CHANGES.md",
+    "next_steps": ".ai/instructions/NEXT_STEPS.md",
+    "machine_manifest": ".ai/instructions/MANIFEST.json"
+  },
   "summary": {
     "stack_count": 1,
     "stack_ids": ["python"],
@@ -89,7 +101,7 @@ The manifest is intentionally small and stable enough for scripts to parse:
 
 Use `schema_version` before building downstream automation around the manifest.
 
-The top-level `summary` block is designed for quick automation checks so scripts do not need to scan every stack object just to know which stacks were selected or which validation commands should run.
+The top-level `summary` block is designed for quick automation checks so scripts do not need to scan every stack object just to know which stacks were selected or which validation commands should run. Use `entrypoints` and `files_by_role` when tooling needs a stable path for a specific purpose instead of guessing filenames.
 
 ## Example output
 
