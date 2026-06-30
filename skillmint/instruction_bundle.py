@@ -201,4 +201,4 @@ def _manifest(detections: List[Detection], output_dir: str = DEFAULT_INSTRUCTION
         },
         "stacks": stacks,
     }
-    return json.dumps(payload, indent=2, sort_keys=True) + "\n
+    return f"{json.dumps(payload, indent=2, sort_keys=True)}\n"
