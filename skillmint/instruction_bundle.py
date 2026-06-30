@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Iterable, List
@@ -17,7 +18,7 @@ INSTRUCTION_BUNDLE_ROLES = {
     "next_steps": "NEXT_STEPS.md",
     "machine_manifest": "MANIFEST.json",
 }
-SCHEMA_VERSION = "1.2"
+SCHEMA_VERSION = "1.3"
 
 
 def write_instruction_bundle(root: Path, detections: List[Detection], selected_stack_ids: Iterable[str], *, output_dir: str = DEFAULT_INSTRUCTIONS_DIR, overwrite: bool = False, skipped: List[str] | None = None) -> List[Path]:
@@ -35,14 +36,7 @@ def write_instruction_bundle(root: Path, detections: List[Detection], selected_s
         return []
     target = validate_instruction_bundle_dir(root, output_dir)
     bundle_dir = _relative_bundle_dir(root, target)
-    outputs = {
-        "README.md": _readme(selected),
-        "STACKS.md": _stacks(selected),
-        "COMMANDS.md": _commands(selected),
-        "SAFE_CHANGES.md": _safe_changes(selected),
-        "NEXT_STEPS.md": _next_steps(selected),
-        "MANIFEST.json": _manifest(selected, bundle_dir),
-    }
+    outputs = _instruction_bundle_outputs(selected, bundle_dir)
     written: List[Path] = []
     for name, content in outputs.items():
         path = target / name
@@ -99,6 +93,30 @@ def _bundle_path(base: str, filename: str) -> str:
 
 def _bundle_role_paths(base: str) -> dict[str, str]:
     return {role: _bundle_path(base, filename) for role, filename in INSTRUCTION_BUNDLE_ROLES.items()}
+
+
+def _content_sha256(content: str) -> str:
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+
+def _file_hashes(outputs: dict[str, str], base: str) -> dict[str, str]:
+    return {
+        _bundle_path(base, name): _content_sha256(content)
+        for name, content in outputs.items()
+        if name != "MANIFEST.json"
+    }
+
+
+def _instruction_bundle_outputs(detections: List[Detection], bundle_dir: str) -> dict[str, str]:
+    outputs = {
+        "README.md": _readme(detections),
+        "STACKS.md": _stacks(detections),
+        "COMMANDS.md": _commands(detections),
+        "SAFE_CHANGES.md": _safe_changes(detections),
+        "NEXT_STEPS.md": _next_steps(detections),
+    }
+    outputs["MANIFEST.json"] = _manifest(detections, bundle_dir, file_hashes=_file_hashes(outputs, _normalise_output_dir(bundle_dir)))
+    return outputs
 
 
 def _readme(detections: List[Detection]) -> str:
@@ -184,7 +202,7 @@ def _next_steps(detections: List[Detection]) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def _manifest(detections: List[Detection], bundle_dir: str = DEFAULT_INSTRUCTIONS_DIR) -> str:
+def _manifest(detections: List[Detection], bundle_dir: str = DEFAULT_INSTRUCTIONS_DIR, *, file_hashes: dict[str, str] | None = None) -> str:
     base = _normalise_output_dir(bundle_dir)
     stacks = []
     for detection in detections:
@@ -210,6 +228,7 @@ def _manifest(detections: List[Detection], bundle_dir: str = DEFAULT_INSTRUCTION
             "machine": role_paths["machine_manifest"],
         },
         "files": [_bundle_path(base, name) for name in INSTRUCTION_BUNDLE_FILES],
+        "file_hashes": file_hashes or {},
         "files_by_role": role_paths,
         "summary": {
             "stack_count": len(stacks),
