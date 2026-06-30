@@ -47,7 +47,7 @@ skillmint --yes --force
 - `COMMANDS.md`: install, run, test, and build commands from the detected stack definitions.
 - `SAFE_CHANGES.md`: focused editing rules and paths that should normally be avoided.
 - `NEXT_STEPS.md`: review checklist and per-stack validation hints for the next safe edit.
-- `MANIFEST.json`: machine-readable metadata for automation, including schema version, generated file paths, role paths, summary metadata, detected stack IDs, commands, directories, avoid rules, and the preferred validation command per stack.
+- `MANIFEST.json`: machine-readable metadata for automation, including schema version, generated file paths, SHA-256 file hashes, role paths, summary metadata, detected stack IDs, commands, directories, avoid rules, and the preferred validation command per stack.
 
 ## Review flow
 
@@ -65,13 +65,16 @@ The manifest is intentionally small and stable enough for scripts to parse:
 
 ```json
 {
-  "schema_version": "1.2",
+  "schema_version": "1.3",
   "bundle_dir": ".ai/instructions",
   "entrypoints": {
     "human": ".ai/instructions/README.md",
     "machine": ".ai/instructions/MANIFEST.json"
   },
   "files": [".ai/instructions/README.md"],
+  "file_hashes": {
+    ".ai/instructions/README.md": "<sha256>"
+  },
   "files_by_role": {
     "human_entrypoint": ".ai/instructions/README.md",
     "stack_evidence": ".ai/instructions/STACKS.md",
@@ -104,6 +107,8 @@ The manifest is intentionally small and stable enough for scripts to parse:
 Use `schema_version` before building downstream automation around the manifest.
 
 The top-level `summary` block is designed for quick automation checks so scripts do not need to scan every stack object just to know which stacks were selected or which validation commands should run. Use `entrypoints` and `files_by_role` when tooling needs a stable path for a specific purpose instead of guessing filenames.
+
+The `file_hashes` block records SHA-256 hashes for the generated human-readable bundle files. Automation can use these hashes to detect manual edits, stale generated output, or accidental partial copies without parsing every Markdown file first. The manifest itself is not included in `file_hashes` so the hash list remains deterministic and easy to verify.
 
 ## Example output
 
