@@ -19,7 +19,7 @@ INSTRUCTION_BUNDLE_ROLES = {
     "next_steps": "NEXT_STEPS.md",
     "machine_manifest": "MANIFEST.json",
 }
-SCHEMA_VERSION = "1.6"
+SCHEMA_VERSION = "1.7"
 
 
 def write_instruction_bundle(root: Path, detections: List[Detection], selected_stack_ids: Iterable[str], *, output_dir: str = DEFAULT_INSTRUCTIONS_DIR, overwrite: bool = False, skipped: List[str] | None = None) -> List[Path]:
@@ -128,6 +128,18 @@ def verify_instruction_bundle(root: Path, output_dir: str = DEFAULT_INSTRUCTIONS
     if manifest.get("files_by_role") != expected_role_paths:
         errors.append("MANIFEST.json: files_by_role does not match the expected instruction bundle role paths")
 
+    stacks = manifest.get("stacks")
+    if not isinstance(stacks, list):
+        errors.append("MANIFEST.json: stacks must be a list")
+        stacks = []
+    stack_ids = [stack.get("id") for stack in stacks if isinstance(stack, dict)]
+
+    summary = manifest.get("summary") if isinstance(manifest.get("summary"), dict) else {}
+    if summary.get("stack_count") != len(stacks):
+        errors.append(f"MANIFEST.json: summary.stack_count should be {len(stacks)}")
+    if summary.get("stack_ids") != stack_ids:
+        errors.append("MANIFEST.json: summary.stack_ids do not match stacks[].id order")
+
     integrity = manifest.get("integrity") if isinstance(manifest.get("integrity"), dict) else {}
     if integrity.get("hash_algorithm") != HASH_ALGORITHM:
         errors.append(f"MANIFEST.json: expected hash algorithm {HASH_ALGORITHM}")
@@ -135,6 +147,8 @@ def verify_instruction_bundle(root: Path, output_dir: str = DEFAULT_INSTRUCTIONS
         errors.append(f"MANIFEST.json: expected_file_count should be {len(expected_files)}")
     if integrity.get("role_count") != len(expected_role_paths):
         errors.append(f"MANIFEST.json: role_count should be {len(expected_role_paths)}")
+    if integrity.get("stack_count") != len(stacks):
+        errors.append(f"MANIFEST.json: integrity.stack_count should be {len(stacks)}")
 
     file_hashes = manifest.get("file_hashes")
     if not isinstance(file_hashes, dict):
@@ -366,6 +380,7 @@ def _manifest(detections: List[Detection], bundle_dir: str = DEFAULT_INSTRUCTION
             "manifest_included_in_hashes": False,
             "expected_file_count": len(files),
             "role_count": len(role_paths),
+            "stack_count": len(stacks),
         },
         "summary": {
             "stack_count": len(stacks),
