@@ -48,11 +48,17 @@ def test_instruction_bundle_writes_machine_readable_manifest(tmp_path: Path) -> 
     write_instruction_bundle(tmp_path, detect(tmp_path), selected_stack_ids=["python"], output_dir="docs/project-ai")
 
     manifest = json.loads((tmp_path / "docs/project-ai/MANIFEST.json").read_text(encoding="utf-8"))
-    assert manifest["schema_version"] == "1.5"
+    assert manifest["schema_version"] == "1.6"
     assert manifest["bundle_dir"] == "docs/project-ai"
     assert manifest["entrypoints"] == {"human": "docs/project-ai/README.md", "machine": "docs/project-ai/MANIFEST.json"}
-    assert manifest["files_by_role"]["commands"] == "docs/project-ai/COMMANDS.md"
-    assert manifest["files_by_role"]["safe_change_rules"] == "docs/project-ai/SAFE_CHANGES.md"
+    assert manifest["files_by_role"] == {
+        "human_entrypoint": "docs/project-ai/README.md",
+        "stack_evidence": "docs/project-ai/STACKS.md",
+        "commands": "docs/project-ai/COMMANDS.md",
+        "safe_change_rules": "docs/project-ai/SAFE_CHANGES.md",
+        "next_steps": "docs/project-ai/NEXT_STEPS.md",
+        "machine_manifest": "docs/project-ai/MANIFEST.json",
+    }
     assert manifest["summary"] == {
         "stack_count": 1,
         "stack_ids": ["python"],
@@ -87,9 +93,11 @@ def test_instruction_bundle_manifest_includes_integrity_metadata(tmp_path: Path)
         "hashed_file_count": 5,
         "manifest_included_in_hashes": False,
         "expected_file_count": 6,
+        "role_count": 6,
     }
     assert manifest["integrity"]["hashed_file_count"] == len(manifest["file_hashes"])
     assert manifest["integrity"]["expected_file_count"] == len(manifest["files"])
+    assert manifest["integrity"]["role_count"] == len(manifest["files_by_role"])
 
 
 def test_instruction_bundle_verification_passes_for_fresh_bundle(tmp_path: Path) -> None:
@@ -113,6 +121,24 @@ def test_instruction_bundle_verification_detects_changed_file(tmp_path: Path) ->
 
     assert result["ok"] is False
     assert ".ai/instructions/COMMANDS.md: sha256 mismatch" in result["errors"]
+
+
+def test_instruction_bundle_verification_detects_stale_role_metadata(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text("[project]\nname = 'demo'\n", encoding="utf-8")
+    write_instruction_bundle(tmp_path, detect(tmp_path), selected_stack_ids=["python"])
+    manifest_path = tmp_path / ".ai/instructions/MANIFEST.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["entrypoints"]["human"] = ".ai/instructions/STACKS.md"
+    manifest["files_by_role"]["commands"] = ".ai/instructions/README.md"
+    manifest["integrity"]["role_count"] = 0
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    result = verify_instruction_bundle(tmp_path)
+
+    assert result["ok"] is False
+    assert "MANIFEST.json: entrypoints do not match the expected instruction bundle entrypoints" in result["errors"]
+    assert "MANIFEST.json: files_by_role does not match the expected instruction bundle role paths" in result["errors"]
+    assert "MANIFEST.json: role_count should be 6" in result["errors"]
 
 
 def test_instruction_bundle_verification_detects_missing_file(tmp_path: Path) -> None:
