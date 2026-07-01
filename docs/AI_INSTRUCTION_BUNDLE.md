@@ -36,6 +36,20 @@ Absolute paths are accepted only when they resolve inside the selected project r
 
 For predictable dry-runs and portable manifests, custom instruction directories must use direct folder names only. SkillMint rejects `.` and `..` path segments, project-root escapes, and control characters before planning or writing bundle files. Prefer a simple project-relative folder such as `docs/project-ai` or `.ai/instructions`.
 
+Verify an existing bundle before CI or automation consumes it:
+
+```bash
+skillmint --verify-instructions
+```
+
+Verify a custom bundle folder:
+
+```bash
+skillmint --root /path/to/project --instructions-dir docs/project-ai --verify-instructions
+```
+
+`--verify-instructions` checks that `MANIFEST.json` exists, parses as JSON, matches the expected schema and bundle directory, lists the expected generated files, uses the expected hash algorithm, and that every hashed Markdown file still matches its SHA-256 digest. It exits `0` when the bundle is valid and `1` when the bundle is missing, incomplete, stale, or changed after generation.
+
 Overwrite an existing generated bundle intentionally:
 
 ```bash
@@ -62,6 +76,7 @@ After generation, review the bundle in this order:
 5. Use `NEXT_STEPS.md` as the short checklist for the next change.
 6. If `requires_validation_review` is `true`, add or document validation commands before broad scripted use.
 7. If automation consumes generated files, check `integrity.hash_algorithm`, `integrity.hashed_file_count`, and `integrity.expected_file_count` before trusting cached bundle output.
+8. Run `skillmint --verify-instructions` as a lightweight regression check after generated files are committed or copied between workspaces.
 
 ## Manifest schema
 
