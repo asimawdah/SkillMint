@@ -48,7 +48,7 @@ Verify a custom bundle folder:
 skillmint --root /path/to/project --instructions-dir docs/project-ai --verify-instructions
 ```
 
-`--verify-instructions` checks that `MANIFEST.json` exists, parses as JSON, matches the expected schema and bundle directory, lists the expected generated files, uses the expected hash algorithm, and that every hashed Markdown file still matches its SHA-256 digest. It exits `0` when the bundle is valid and `1` when the bundle is missing, incomplete, stale, or changed after generation.
+`--verify-instructions` checks that `MANIFEST.json` exists, parses as JSON, matches the expected schema and bundle directory, lists the expected generated files, preserves the expected human/machine entrypoints and role-path map, uses the expected hash algorithm, records the expected role count, and that every hashed Markdown file still matches its SHA-256 digest. It exits `0` when the bundle is valid and `1` when the bundle is missing, incomplete, stale, or changed after generation.
 
 Overwrite an existing generated bundle intentionally:
 
@@ -75,7 +75,7 @@ After generation, review the bundle in this order:
 4. Check `SAFE_CHANGES.md` for conventions and paths to avoid.
 5. Use `NEXT_STEPS.md` as the short checklist for the next change.
 6. If `requires_validation_review` is `true`, add or document validation commands before broad scripted use.
-7. If automation consumes generated files, check `integrity.hash_algorithm`, `integrity.hashed_file_count`, and `integrity.expected_file_count` before trusting cached bundle output.
+7. If automation consumes generated files, check `integrity.hash_algorithm`, `integrity.hashed_file_count`, `integrity.expected_file_count`, `integrity.role_count`, `entrypoints`, and `files_by_role` before trusting cached bundle output.
 8. Run `skillmint --verify-instructions` as a lightweight regression check after generated files are committed or copied between workspaces.
 
 ## Manifest schema
@@ -84,7 +84,7 @@ The manifest is intentionally small and stable enough for scripts to parse:
 
 ```json
 {
-  "schema_version": "1.5",
+  "schema_version": "1.6",
   "bundle_dir": ".ai/instructions",
   "entrypoints": {
     "human": ".ai/instructions/README.md",
@@ -106,7 +106,8 @@ The manifest is intentionally small and stable enough for scripts to parse:
     "hash_algorithm": "sha256",
     "hashed_file_count": 5,
     "manifest_included_in_hashes": false,
-    "expected_file_count": 6
+    "expected_file_count": 6,
+    "role_count": 6
   },
   "summary": {
     "stack_count": 1,
@@ -139,7 +140,7 @@ The `missing_validation_stack_ids` and `requires_validation_review` fields make 
 
 The `file_hashes` block records SHA-256 hashes for the generated human-readable bundle files. Automation can use these hashes to detect manual edits, stale generated output, or accidental partial copies without parsing every Markdown file first. The manifest itself is not included in `file_hashes` so the hash list remains deterministic and easy to verify.
 
-The `integrity` block records the hash algorithm, the number of hashed Markdown files, whether the manifest hashes itself, and the expected number of generated bundle files. Use this for lightweight CI checks that need to detect partial bundle output or unexpected schema changes before reading every Markdown file.
+The `integrity` block records the hash algorithm, the number of hashed Markdown files, whether the manifest hashes itself, the expected number of generated bundle files, and the expected number of role mappings. Use this for lightweight CI checks that need to detect partial bundle output, stale role mappings, or unexpected schema changes before reading every Markdown file.
 
 ## Example output
 
