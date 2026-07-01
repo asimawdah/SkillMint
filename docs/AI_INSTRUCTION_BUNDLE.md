@@ -48,7 +48,7 @@ Verify a custom bundle folder:
 skillmint --root /path/to/project --instructions-dir docs/project-ai --verify-instructions
 ```
 
-`--verify-instructions` checks that `MANIFEST.json` exists, parses as JSON, matches the expected schema and bundle directory, lists the expected generated files, preserves the expected human/machine entrypoints and role-path map, keeps summary stack counts and stack ID order aligned with `stacks`, uses the expected hash algorithm, records the expected role count, and that every hashed Markdown file still matches its SHA-256 digest. It exits `0` when the bundle is valid and `1` when the bundle is missing, incomplete, stale, or changed after generation.
+`--verify-instructions` checks that `MANIFEST.json` exists, parses as JSON, matches the expected schema and bundle directory, lists the expected generated files, preserves the expected human/machine entrypoints and role-path map, uses the expected hash algorithm, records the expected file and role counts, and that every hashed Markdown file still matches its SHA-256 digest. It exits `0` when the bundle is valid and `1` when the bundle is missing, incomplete, stale, or changed after generation.
 
 Overwrite an existing generated bundle intentionally:
 
@@ -75,7 +75,7 @@ After generation, review the bundle in this order:
 4. Check `SAFE_CHANGES.md` for conventions and paths to avoid.
 5. Use `NEXT_STEPS.md` as the short checklist for the next change.
 6. If `requires_validation_review` is `true`, add or document validation commands before broad scripted use.
-7. If automation consumes generated files, check `integrity.hash_algorithm`, `integrity.hashed_file_count`, `integrity.expected_file_count`, `integrity.role_count`, `entrypoints`, `files_by_role`, `summary.stack_count`, and `summary.stack_ids` before trusting cached bundle output.
+7. If automation consumes generated files, check `integrity.hash_algorithm`, `integrity.hashed_file_count`, `integrity.expected_file_count`, `integrity.role_count`, `entrypoints`, and `files_by_role` before trusting cached bundle output.
 8. Run `skillmint --verify-instructions` as a lightweight regression check after generated files are committed or copied between workspaces.
 
 ## Manifest schema
@@ -134,7 +134,7 @@ The manifest is intentionally small and stable enough for scripts to parse:
 
 Use `schema_version` before building downstream automation around the manifest.
 
-The top-level `summary` block is designed for quick automation checks so scripts do not need to scan every stack object just to know which stacks were selected or which validation commands should run. Use `entrypoints` and `files_by_role` when tooling needs a stable path for a specific purpose instead of guessing filenames. `summary.stack_count` and `summary.stack_ids` must match the `stacks` array, including ID order, so stale cached summaries can be detected before automation trusts them.
+The top-level `summary` block is designed for quick automation checks so scripts do not need to scan every stack object just to know which stacks were selected or which validation commands should run. Use `entrypoints` and `files_by_role` when tooling needs a stable path for a specific purpose instead of guessing filenames.
 
 The `missing_validation_stack_ids` and `requires_validation_review` fields make validation gaps explicit. They are useful for CI and repository setup scripts that should pause for manual review when a detected stack has no known validation command.
 
