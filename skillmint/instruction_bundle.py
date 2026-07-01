@@ -74,6 +74,88 @@ def validate_instruction_bundle_dir(root: Path, output_dir: str = DEFAULT_INSTRU
     return target
 
 
+def verify_instruction_bundle(root: Path, output_dir: str = DEFAULT_INSTRUCTIONS_DIR) -> dict[str, object]:
+    """Verify a generated instruction bundle manifest and hashed files."""
+
+    target = validate_instruction_bundle_dir(root, output_dir)
+    manifest_path = target / "MANIFEST.json"
+    bundle_dir = _relative_bundle_dir(root, target)
+    expected_files = [_bundle_path(bundle_dir, name) for name in INSTRUCTION_BUNDLE_FILES]
+    errors: list[str] = []
+
+    if not manifest_path.exists():
+        errors.append(f"{_bundle_path(bundle_dir, 'MANIFEST.json')}: missing manifest")
+        return {
+            "ok": False,
+            "bundle_dir": bundle_dir,
+            "checked_files": [],
+            "expected_files": expected_files,
+            "errors": errors,
+        }
+
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        errors.append(f"{_bundle_path(bundle_dir, 'MANIFEST.json')}: invalid JSON at line {exc.lineno}, column {exc.colno}")
+        return {
+            "ok": False,
+            "bundle_dir": bundle_dir,
+            "checked_files": [],
+            "expected_files": expected_files,
+            "errors": errors,
+        }
+
+    if manifest.get("schema_version") != SCHEMA_VERSION:
+        errors.append(f"MANIFEST.json: expected schema_version {SCHEMA_VERSION}, found {manifest.get('schema_version')!r}")
+    if manifest.get("bundle_dir") != bundle_dir:
+        errors.append(f"MANIFEST.json: expected bundle_dir {bundle_dir!r}, found {manifest.get('bundle_dir')!r}")
+
+    manifest_files = manifest.get("files")
+    if manifest_files != expected_files:
+        errors.append("MANIFEST.json: files list does not match the expected instruction bundle files")
+
+    integrity = manifest.get("integrity") if isinstance(manifest.get("integrity"), dict) else {}
+    if integrity.get("hash_algorithm") != HASH_ALGORITHM:
+        errors.append(f"MANIFEST.json: expected hash algorithm {HASH_ALGORITHM}")
+    if integrity.get("expected_file_count") != len(expected_files):
+        errors.append(f"MANIFEST.json: expected_file_count should be {len(expected_files)}")
+
+    file_hashes = manifest.get("file_hashes")
+    if not isinstance(file_hashes, dict):
+        errors.append("MANIFEST.json: file_hashes must be an object")
+        file_hashes = {}
+    expected_hashed_files = [path for path in expected_files if not path.endswith("/MANIFEST.json") and path != "MANIFEST.json"]
+    if set(file_hashes) != set(expected_hashed_files):
+        errors.append("MANIFEST.json: file_hashes keys do not match expected Markdown bundle files")
+    if integrity.get("hashed_file_count") != len(file_hashes):
+        errors.append("MANIFEST.json: hashed_file_count does not match file_hashes")
+
+    checked_files: list[str] = []
+    for relative_path in expected_files:
+        path = root.resolve() / relative_path
+        if not path.exists():
+            errors.append(f"{relative_path}: missing file")
+            continue
+        if path.is_dir():
+            errors.append(f"{relative_path}: expected file but found directory")
+            continue
+        if relative_path == _bundle_path(bundle_dir, "MANIFEST.json"):
+            continue
+        digest = hashlib.sha256(path.read_text(encoding="utf-8").encode("utf-8")).hexdigest()
+        checked_files.append(relative_path)
+        expected_digest = file_hashes.get(relative_path)
+        if expected_digest != digest:
+            errors.append(f"{relative_path}: sha256 mismatch")
+
+    return {
+        "ok": not errors,
+        "bundle_dir": bundle_dir,
+        "checked_files": checked_files,
+        "expected_files": expected_files,
+        "errors": errors,
+    }
+
+
 def _clean_output_dir(output_dir: str = DEFAULT_INSTRUCTIONS_DIR) -> str:
     return output_dir.strip().replace("\\", "/")
 
