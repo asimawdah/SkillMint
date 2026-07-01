@@ -8,7 +8,7 @@ from . import __version__
 from .detectors import detect
 from .generators import generate_all, preview_generated_skills
 from .installer import install_skills
-from .instruction_bundle import DEFAULT_INSTRUCTIONS_DIR, planned_instruction_bundle_outputs, validate_instruction_bundle_dir, write_instruction_bundle
+from .instruction_bundle import DEFAULT_INSTRUCTIONS_DIR, planned_instruction_bundle_outputs, validate_instruction_bundle_dir, verify_instruction_bundle, write_instruction_bundle
 from .ui import UI
 
 
@@ -32,6 +32,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dry-run", action="store_true", help="Preview planned SkillMint changes without writing files.")
     parser.add_argument("--root", default=".", help="Project directory. Defaults to current directory.")
     parser.add_argument("--instructions-dir", default=DEFAULT_INSTRUCTIONS_DIR, help="Folder for the generated instruction bundle.")
+    parser.add_argument("--verify-instructions", action="store_true", help="Verify an existing instruction bundle manifest and file hashes, then exit.")
     return parser
 
 
@@ -71,6 +72,16 @@ def main(argv: Optional[List[str]] = None) -> int:
     except ValueError as exc:
         print(f"Invalid --instructions-dir: {exc}")
         return 2
+
+    if args.verify_instructions:
+        result = verify_instruction_bundle(root, args.instructions_dir)
+        if result["ok"]:
+            print(f"Instruction bundle verified: {result['bundle_dir']}")
+            ui.summary("Checked bundle files", result["checked_files"])
+            return 0
+        print(f"Instruction bundle verification failed: {result['bundle_dir']}")
+        ui.summary("Problems", result["errors"])
+        return 1
 
     detections = detect(root)
     ui.show_detections(detections)
