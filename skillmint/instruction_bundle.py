@@ -71,6 +71,10 @@ def validate_instruction_bundle_dir(root: Path, output_dir: str = DEFAULT_INSTRU
         target.relative_to(resolved_root)
     except ValueError as exc:
         raise ValueError("--instructions-dir must stay inside the project root") from exc
+    if target == resolved_root:
+        raise ValueError("--instructions-dir must point to a folder below the project root")
+    if target.exists() and not target.is_dir():
+        raise ValueError("--instructions-dir must point to a folder, not an existing file")
     return target
 
 
