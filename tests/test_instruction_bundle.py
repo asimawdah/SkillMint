@@ -10,6 +10,16 @@ from skillmint.detectors import detect
 from skillmint.instruction_bundle import planned_instruction_bundle_outputs, validate_instruction_bundle_dir, write_instruction_bundle
 
 
+EXPECTED_BUNDLE_FILES = [
+    ".ai/instructions/README.md",
+    ".ai/instructions/STACKS.md",
+    ".ai/instructions/COMMANDS.md",
+    ".ai/instructions/SAFE_CHANGES.md",
+    ".ai/instructions/NEXT_STEPS.md",
+    ".ai/instructions/MANIFEST.json",
+]
+
+
 def test_instruction_bundle_detects_multiple_project_types_and_writes_folder(tmp_path: Path) -> None:
     (tmp_path / "pubspec.yaml").write_text("name: demo\ndependencies:\n  flutter:\n    sdk: flutter\n", encoding="utf-8")
     (tmp_path / "pyproject.toml").write_text("[project]\nname = 'demo'\ndependencies = ['fastapi']\n", encoding="utf-8")
@@ -21,14 +31,7 @@ def test_instruction_bundle_detects_multiple_project_types_and_writes_folder(tmp
 
     written = write_instruction_bundle(tmp_path, detections, selected_stack_ids=["flutter", "python", "fastapi", "docker"], output_dir=".ai/instructions")
     relative = sorted(path.relative_to(tmp_path).as_posix() for path in written)
-    assert relative == [
-        ".ai/instructions/COMMANDS.md",
-        ".ai/instructions/MANIFEST.json",
-        ".ai/instructions/NEXT_STEPS.md",
-        ".ai/instructions/README.md",
-        ".ai/instructions/SAFE_CHANGES.md",
-        ".ai/instructions/STACKS.md",
-    ]
+    assert relative == sorted(EXPECTED_BUNDLE_FILES)
 
     commands = (tmp_path / ".ai/instructions/COMMANDS.md").read_text(encoding="utf-8")
     assert "flutter test" in commands
@@ -44,7 +47,7 @@ def test_instruction_bundle_writes_machine_readable_manifest(tmp_path: Path) -> 
     write_instruction_bundle(tmp_path, detect(tmp_path), selected_stack_ids=["python"], output_dir="docs/project-ai")
 
     manifest = json.loads((tmp_path / "docs/project-ai/MANIFEST.json").read_text(encoding="utf-8"))
-    assert manifest["schema_version"] == "1.4"
+    assert manifest["schema_version"] == "1.5"
     assert manifest["bundle_dir"] == "docs/project-ai"
     assert manifest["entrypoints"] == {"human": "docs/project-ai/README.md", "machine": "docs/project-ai/MANIFEST.json"}
     assert manifest["files_by_role"]["commands"] == "docs/project-ai/COMMANDS.md"
@@ -67,16 +70,25 @@ def test_instruction_bundle_manifest_includes_file_hashes(tmp_path: Path) -> Non
 
     manifest = json.loads((tmp_path / ".ai/instructions/MANIFEST.json").read_text(encoding="utf-8"))
     hashes = manifest["file_hashes"]
-    assert set(hashes) == {
-        ".ai/instructions/README.md",
-        ".ai/instructions/STACKS.md",
-        ".ai/instructions/COMMANDS.md",
-        ".ai/instructions/SAFE_CHANGES.md",
-        ".ai/instructions/NEXT_STEPS.md",
-    }
+    assert set(hashes) == set(EXPECTED_BUNDLE_FILES) - {".ai/instructions/MANIFEST.json"}
     for relative_path, digest in hashes.items():
         content = (tmp_path / relative_path).read_text(encoding="utf-8")
         assert digest == hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+
+def test_instruction_bundle_manifest_includes_integrity_metadata(tmp_path: Path) -> None:
+    (tmp_path / "go.mod").write_text("module example.com/demo\n", encoding="utf-8")
+    write_instruction_bundle(tmp_path, detect(tmp_path), selected_stack_ids=["go"])
+
+    manifest = json.loads((tmp_path / ".ai/instructions/MANIFEST.json").read_text(encoding="utf-8"))
+    assert manifest["integrity"] == {
+        "hash_algorithm": "sha256",
+        "hashed_file_count": 5,
+        "manifest_included_in_hashes": False,
+        "expected_file_count": 6,
+    }
+    assert manifest["integrity"]["hashed_file_count"] == len(manifest["file_hashes"])
+    assert manifest["integrity"]["expected_file_count"] == len(manifest["files"])
 
 
 def test_instruction_bundle_manifest_summary_deduplicates_validation_commands(tmp_path: Path) -> None:
@@ -200,14 +212,7 @@ def test_planned_instruction_bundle_outputs_uses_custom_folder() -> None:
 
 
 def test_planned_instruction_bundle_outputs_normalises_empty_and_windows_paths() -> None:
-    assert planned_instruction_bundle_outputs("   ") == [
-        ".ai/instructions/README.md",
-        ".ai/instructions/STACKS.md",
-        ".ai/instructions/COMMANDS.md",
-        ".ai/instructions/SAFE_CHANGES.md",
-        ".ai/instructions/NEXT_STEPS.md",
-        ".ai/instructions/MANIFEST.json",
-    ]
+    assert planned_instruction_bundle_outputs("   ") == EXPECTED_BUNDLE_FILES
     assert planned_instruction_bundle_outputs(r"docs\project") == [
         "docs/project/README.md",
         "docs/project/STACKS.md",
