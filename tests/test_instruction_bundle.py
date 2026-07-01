@@ -6,8 +6,9 @@ from pathlib import Path
 
 import pytest
 
+from skillmint.cli import main
 from skillmint.detectors import detect
-from skillmint.instruction_bundle import planned_instruction_bundle_outputs, validate_instruction_bundle_dir, write_instruction_bundle
+from skillmint.instruction_bundle import planned_instruction_bundle_outputs, validate_instruction_bundle_dir, verify_instruction_bundle, write_instruction_bundle
 
 
 EXPECTED_BUNDLE_FILES = [
@@ -91,6 +92,68 @@ def test_instruction_bundle_manifest_includes_integrity_metadata(tmp_path: Path)
     assert manifest["integrity"]["expected_file_count"] == len(manifest["files"])
 
 
+def test_instruction_bundle_verification_passes_for_fresh_bundle(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text("[project]\nname = 'demo'\n", encoding="utf-8")
+    write_instruction_bundle(tmp_path, detect(tmp_path), selected_stack_ids=["python"])
+
+    result = verify_instruction_bundle(tmp_path)
+
+    assert result["ok"] is True
+    assert result["bundle_dir"] == ".ai/instructions"
+    assert result["checked_files"] == EXPECTED_BUNDLE_FILES[:-1]
+    assert result["errors"] == []
+
+
+def test_instruction_bundle_verification_detects_changed_file(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text("[project]\nname = 'demo'\n", encoding="utf-8")
+    write_instruction_bundle(tmp_path, detect(tmp_path), selected_stack_ids=["python"])
+    (tmp_path / ".ai/instructions/COMMANDS.md").write_text("# Commands\n\nchanged by hand\n", encoding="utf-8")
+
+    result = verify_instruction_bundle(tmp_path)
+
+    assert result["ok"] is False
+    assert ".ai/instructions/COMMANDS.md: sha256 mismatch" in result["errors"]
+
+
+def test_instruction_bundle_verification_detects_missing_file(tmp_path: Path) -> None:
+    (tmp_path / "go.mod").write_text("module example.com/demo\n", encoding="utf-8")
+    write_instruction_bundle(tmp_path, detect(tmp_path), selected_stack_ids=["go"])
+    (tmp_path / ".ai/instructions/NEXT_STEPS.md").unlink()
+
+    result = verify_instruction_bundle(tmp_path)
+
+    assert result["ok"] is False
+    assert ".ai/instructions/NEXT_STEPS.md: missing file" in result["errors"]
+
+
+def test_instruction_bundle_verification_reports_missing_manifest(tmp_path: Path) -> None:
+    result = verify_instruction_bundle(tmp_path)
+
+    assert result["ok"] is False
+    assert ".ai/instructions/MANIFEST.json: missing manifest" in result["errors"]
+
+
+def test_cli_verify_instructions_returns_success_for_valid_bundle(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    (tmp_path / "pyproject.toml").write_text("[project]\nname = 'demo'\n", encoding="utf-8")
+    write_instruction_bundle(tmp_path, detect(tmp_path), selected_stack_ids=["python"])
+
+    assert main(["--root", str(tmp_path), "--verify-instructions"]) == 0
+    output = capsys.readouterr().out
+    assert "Instruction bundle verified: .ai/instructions" in output
+    assert ".ai/instructions/COMMANDS.md" in output
+
+
+def test_cli_verify_instructions_returns_failure_for_invalid_bundle(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    (tmp_path / "go.mod").write_text("module example.com/demo\n", encoding="utf-8")
+    write_instruction_bundle(tmp_path, detect(tmp_path), selected_stack_ids=["go"])
+    (tmp_path / ".ai/instructions/README.md").write_text("changed\n", encoding="utf-8")
+
+    assert main(["--root", str(tmp_path), "--verify-instructions"]) == 1
+    output = capsys.readouterr().out
+    assert "Instruction bundle verification failed: .ai/instructions" in output
+    assert ".ai/instructions/README.md: sha256 mismatch" in output
+
+
 def test_instruction_bundle_manifest_summary_deduplicates_validation_commands(tmp_path: Path) -> None:
     (tmp_path / "pyproject.toml").write_text("[project]\nname = 'demo'\ndependencies = ['fastapi']\n", encoding="utf-8")
     write_instruction_bundle(tmp_path, detect(tmp_path), selected_stack_ids=["python", "fastapi"])
@@ -142,6 +205,7 @@ def test_readme_documents_generated_manifest_output() -> None:
 
     assert ".ai/instructions/MANIFEST.json" in readme
     assert "machine-readable manifest" in readme
+    assert "--verify-instructions" in readme
 
 
 def test_instruction_bundle_readme_points_to_manifest(tmp_path: Path) -> None:
