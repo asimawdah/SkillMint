@@ -10,6 +10,7 @@ from .models import Detection
 
 DEFAULT_INSTRUCTIONS_DIR = ".ai/instructions"
 INSTRUCTION_BUNDLE_FILES = ["README.md", "STACKS.md", "COMMANDS.md", "SAFE_CHANGES.md", "NEXT_STEPS.md", "MANIFEST.json"]
+HASH_ALGORITHM = "sha256"
 INSTRUCTION_BUNDLE_ROLES = {
     "human_entrypoint": "README.md",
     "stack_evidence": "STACKS.md",
@@ -18,7 +19,7 @@ INSTRUCTION_BUNDLE_ROLES = {
     "next_steps": "NEXT_STEPS.md",
     "machine_manifest": "MANIFEST.json",
 }
-SCHEMA_VERSION = "1.4"
+SCHEMA_VERSION = "1.5"
 
 
 def write_instruction_bundle(root: Path, detections: List[Detection], selected_stack_ids: Iterable[str], *, output_dir: str = DEFAULT_INSTRUCTIONS_DIR, overwrite: bool = False, skipped: List[str] | None = None) -> List[Path]:
@@ -249,6 +250,8 @@ def _manifest(detections: List[Detection], bundle_dir: str = DEFAULT_INSTRUCTION
     validation_commands = _validation_commands(detections)
     missing_validation_stack_ids = _missing_validation_stack_ids(detections)
     role_paths = _bundle_role_paths(base)
+    files = [_bundle_path(base, name) for name in INSTRUCTION_BUNDLE_FILES]
+    hashed_files = file_hashes or {}
     payload = {
         "schema_version": SCHEMA_VERSION,
         "bundle_dir": base,
@@ -256,9 +259,15 @@ def _manifest(detections: List[Detection], bundle_dir: str = DEFAULT_INSTRUCTION
             "human": role_paths["human_entrypoint"],
             "machine": role_paths["machine_manifest"],
         },
-        "files": [_bundle_path(base, name) for name in INSTRUCTION_BUNDLE_FILES],
-        "file_hashes": file_hashes or {},
+        "files": files,
+        "file_hashes": hashed_files,
         "files_by_role": role_paths,
+        "integrity": {
+            "hash_algorithm": HASH_ALGORITHM,
+            "hashed_file_count": len(hashed_files),
+            "manifest_included_in_hashes": False,
+            "expected_file_count": len(files),
+        },
         "summary": {
             "stack_count": len(stacks),
             "stack_ids": [stack["id"] for stack in stacks],
