@@ -250,6 +250,29 @@ def test_validate_instruction_bundle_dir_rejects_absolute_sibling_path(tmp_path:
         validate_instruction_bundle_dir(tmp_path, str(sibling))
 
 
+def test_validate_instruction_bundle_dir_rejects_project_root_absolute_path(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="below the project root"):
+        validate_instruction_bundle_dir(tmp_path, str(tmp_path))
+
+
+def test_validate_instruction_bundle_dir_rejects_existing_file_target(tmp_path: Path) -> None:
+    target_file = tmp_path / "docs"
+    target_file.write_text("not a directory\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="not an existing file"):
+        validate_instruction_bundle_dir(tmp_path, "docs")
+
+
+def test_cli_rejects_existing_file_instruction_dir_before_detection(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    target_file = tmp_path / "docs"
+    target_file.write_text("not a directory\n", encoding="utf-8")
+
+    assert main(["--root", str(tmp_path), "--instructions-dir", "docs", "--verify-instructions"]) == 2
+    output = capsys.readouterr().out
+    assert "Invalid --instructions-dir" in output
+    assert "not an existing file" in output
+
+
 def test_instruction_bundle_rejects_ambiguous_relative_segments(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="without . or .. segments"):
         validate_instruction_bundle_dir(tmp_path, "docs/../.ai/instructions")
