@@ -74,6 +74,18 @@ To generate the instruction bundle in a custom folder:
 skillmint --yes --instructions-dir docs/project-ai
 ```
 
+To verify an existing generated instruction bundle before trusting it in CI or automation:
+
+```bash
+skillmint --verify-instructions
+```
+
+For a custom bundle folder:
+
+```bash
+skillmint --root /path/to/project --instructions-dir docs/project-ai --verify-instructions
+```
+
 To avoid downloading external skills and only generate local skills:
 
 ```bash
@@ -109,6 +121,7 @@ SkillMint should make AI-assisted development safer, not noisier. A normal run s
 5. Skip existing generated files unless `--force` is passed.
 6. Prefer small, readable generated files over large hidden configuration.
 7. Keep generated content easy to review in Git before it is committed.
+8. Run `skillmint --verify-instructions` before CI or automation consumes a generated bundle.
 
 Recommended review command after running SkillMint:
 
@@ -235,6 +248,7 @@ Run the CLI locally:
 ```bash
 python -m skillmint --version
 python -m skillmint --root .
+python -m skillmint --verify-instructions
 ```
 
 ## Project goals
