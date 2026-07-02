@@ -68,6 +68,24 @@ For non-interactive usage:
 skillmint --yes
 ```
 
+To generate the instruction bundle in a custom folder:
+
+```bash
+skillmint --yes --instructions-dir docs/project-ai
+```
+
+To verify an existing generated instruction bundle before trusting it in CI or automation:
+
+```bash
+skillmint --verify-instructions
+```
+
+For a custom bundle folder:
+
+```bash
+skillmint --root /path/to/project --instructions-dir docs/project-ai --verify-instructions
+```
+
 To avoid downloading external skills and only generate local skills:
 
 ```bash
@@ -103,11 +121,12 @@ SkillMint should make AI-assisted development safer, not noisier. A normal run s
 5. Skip existing generated files unless `--force` is passed.
 6. Prefer small, readable generated files over large hidden configuration.
 7. Keep generated content easy to review in Git before it is committed.
+8. Run `skillmint --verify-instructions` before CI or automation consumes a generated bundle.
 
 Recommended review command after running SkillMint:
 
 ```bash
-git diff -- AGENTS.md CLAUDE.md .cursor/rules/project.mdc .github/copilot-instructions.md .ai/skills
+git diff -- AGENTS.md CLAUDE.md .cursor/rules/project.mdc .github/copilot-instructions.md .ai/instructions .ai/skills
 ```
 
 If the generated files do not match the project, edit them before giving an AI agent permission to modify code.
@@ -121,12 +140,20 @@ AGENTS.md
 CLAUDE.md
 .cursor/rules/project.mdc
 .github/copilot-instructions.md
+.ai/instructions/README.md
+.ai/instructions/STACKS.md
+.ai/instructions/COMMANDS.md
+.ai/instructions/SAFE_CHANGES.md
+.ai/instructions/NEXT_STEPS.md
+.ai/instructions/MANIFEST.json
 .ai/skills/<stack>/SKILL.md
 ```
 
 These files give AI coding agents clear project-specific context and safer editing rules.
 
 Generated instruction files include a **Detection Evidence** section when SkillMint knows why a stack was selected. This makes scanner results easier to review before trusting generated AI instructions.
+
+The `.ai/instructions/` bundle keeps the detected project profile, commands, safe-change rules, next-step checks, and machine-readable manifest in one clear output folder. See `docs/AI_INSTRUCTION_BUNDLE.md` for details and examples.
 
 Example:
 
@@ -184,10 +211,16 @@ AGENTS.md
 CLAUDE.md
 .cursor/rules/project.mdc
 .github/copilot-instructions.md
+.ai/instructions/README.md
+.ai/instructions/STACKS.md
+.ai/instructions/COMMANDS.md
+.ai/instructions/SAFE_CHANGES.md
+.ai/instructions/NEXT_STEPS.md
+.ai/instructions/MANIFEST.json
 .ai/skills/react/SKILL.md
 ```
 
-The generated instructions include common commands, stack-specific rules, files to avoid, and guidance for AI-assisted edits.
+The generated instructions include common commands, stack-specific rules, files to avoid, next-step checks, machine-readable manifest metadata, and guidance for AI-assisted edits.
 
 ## Development
 
@@ -215,6 +248,7 @@ Run the CLI locally:
 ```bash
 python -m skillmint --version
 python -m skillmint --root .
+python -m skillmint --verify-instructions
 ```
 
 ## Project goals

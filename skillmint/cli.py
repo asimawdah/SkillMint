@@ -8,6 +8,7 @@ from . import __version__
 from .detectors import detect
 from .generators import generate_all, preview_generated_skills
 from .installer import install_skills
+from .instruction_bundle import DEFAULT_INSTRUCTIONS_DIR, planned_instruction_bundle_outputs, validate_instruction_bundle_dir, verify_instruction_bundle, write_instruction_bundle
 from .ui import UI
 
 
@@ -22,7 +23,7 @@ INSTRUCTION_FILE_PATHS = [
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="skillmint",
-        description="One command to make your codebase AI-agent ready.",
+        description="One command to prepare project instruction files.",
     )
     parser.add_argument("--version", action="store_true", help="Show SkillMint version and exit.")
     parser.add_argument("--yes", "-y", action="store_true", help="Accept defaults without prompting.")
@@ -30,6 +31,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--force", action="store_true", help="Overwrite existing SkillMint-generated files instead of skipping them.")
     parser.add_argument("--dry-run", action="store_true", help="Preview planned SkillMint changes without writing files.")
     parser.add_argument("--root", default=".", help="Project directory. Defaults to current directory.")
+    parser.add_argument("--instructions-dir", default=DEFAULT_INSTRUCTIONS_DIR, help="Folder for the generated instruction bundle.")
+    parser.add_argument("--verify-instructions", action="store_true", help="Verify an existing instruction bundle manifest and file hashes, then exit.")
     return parser
 
 
@@ -64,6 +67,22 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(f"Project root does not exist or is not a directory: {root}")
         return 2
 
+    try:
+        validate_instruction_bundle_dir(root, args.instructions_dir)
+    except ValueError as exc:
+        print(f"Invalid --instructions-dir: {exc}")
+        return 2
+
+    if args.verify_instructions:
+        result = verify_instruction_bundle(root, args.instructions_dir)
+        if result["ok"]:
+            print(f"Instruction bundle verified: {result['bundle_dir']}")
+            ui.summary("Checked bundle files", result["checked_files"])
+            return 0
+        print(f"Instruction bundle verification failed: {result['bundle_dir']}")
+        ui.summary("Problems", result["errors"])
+        return 1
+
     detections = detect(root)
     ui.show_detections(detections)
     if not detections:
@@ -81,11 +100,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.dry_run:
         print("\nDry run. No files were changed.\n")
         ui.summary("Would generate instruction files", INSTRUCTION_FILE_PATHS)
+        ui.summary("Would generate instruction bundle", planned_instruction_bundle_outputs(args.instructions_dir))
         ui.summary("Would install skills", planned_skill_outputs(detections, selected_stack_ids, no_external=args.no_external))
         print("Run without --dry-run to write these files.")
         return 0
 
-    should_generate = ui.confirm("Generate AI instruction files?", default=True)
+    should_generate = ui.confirm("Generate instruction files?", default=True)
     install_external = False
     has_external = any(d.stack.external_skills for d in detections if d.id in selected_stack_ids)
     if has_external and not args.no_external:
@@ -96,12 +116,21 @@ def main(argv: Optional[List[str]] = None) -> int:
         )
 
     written_files = []
+    written_bundle_files = []
     skipped_generated: List[str] = []
     if should_generate:
         written_files = generate_all(
             root,
             detections,
             selected_stack_ids,
+            overwrite=args.force,
+            skipped=skipped_generated,
+        )
+        written_bundle_files = write_instruction_bundle(
+            root,
+            detections,
+            selected_stack_ids,
+            output_dir=args.instructions_dir,
             overwrite=args.force,
             skipped=skipped_generated,
         )
@@ -116,10 +145,11 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     print("\nDone.\n")
     ui.summary("Generated instruction files", [str(p.relative_to(root)) for p in written_files])
+    ui.summary("Generated instruction bundle", [str(p.relative_to(root)) for p in written_bundle_files])
     ui.summary("Installed skills", install_result.installed)
     ui.summary("Skipped", skipped_generated + install_result.skipped)
     ui.summary("Fallbacks / warnings", install_result.failed)
-    print("Your project is now AI-agent ready.")
+    print("Your project instruction setup is ready.")
     return 0
 
 
