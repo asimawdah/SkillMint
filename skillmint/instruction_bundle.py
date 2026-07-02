@@ -21,7 +21,7 @@ INSTRUCTION_BUNDLE_ROLES = {
     "next_steps": "NEXT_STEPS.md",
     "machine_manifest": "MANIFEST.json",
 }
-SCHEMA_VERSION = "1.7"
+SCHEMA_VERSION = "1.6"
 
 
 def write_instruction_bundle(root: Path, detections: List[Detection], selected_stack_ids: Iterable[str], *, output_dir: str = DEFAULT_INSTRUCTIONS_DIR, overwrite: bool = False, skipped: List[str] | None = None) -> List[Path]:
@@ -153,10 +153,11 @@ def verify_instruction_bundle(root: Path, output_dir: str = DEFAULT_INSTRUCTIONS
         errors.append(f"MANIFEST.json: summary.stack_count should be {len(stacks)}")
     if summary.get("stack_ids") != stack_ids:
         errors.append("MANIFEST.json: summary.stack_ids do not match stacks[].id order")
-    if summary.get("low_confidence_stack_ids") != low_confidence_stack_ids:
-        errors.append("MANIFEST.json: summary.low_confidence_stack_ids do not match stacks below the confidence threshold")
-    if summary.get("requires_detection_review") != bool(low_confidence_stack_ids):
-        errors.append("MANIFEST.json: summary.requires_detection_review does not match low-confidence detections")
+    if low_confidence_stack_ids or "low_confidence_stack_ids" in summary or "requires_detection_review" in summary:
+        if summary.get("low_confidence_stack_ids") != low_confidence_stack_ids:
+            errors.append("MANIFEST.json: summary.low_confidence_stack_ids do not match stacks below the confidence threshold")
+        if summary.get("requires_detection_review") != bool(low_confidence_stack_ids):
+            errors.append("MANIFEST.json: summary.requires_detection_review does not match low-confidence detections")
 
     integrity = manifest.get("integrity") if isinstance(manifest.get("integrity"), dict) else {}
     if integrity.get("hash_algorithm") != HASH_ALGORITHM:
@@ -405,6 +406,22 @@ def _manifest(detections: List[Detection], bundle_dir: str = DEFAULT_INSTRUCTION
     role_paths = _bundle_role_paths(base)
     files = [_bundle_path(base, name) for name in INSTRUCTION_BUNDLE_FILES]
     hashed_files = file_hashes or {}
+    summary = {
+        "stack_count": len(stacks),
+        "stack_ids": [stack["id"] for stack in stacks],
+        "validation_commands": validation_commands,
+        "has_validation_commands": bool(validation_commands),
+        "missing_validation_stack_ids": missing_validation_stack_ids,
+        "requires_validation_review": bool(missing_validation_stack_ids),
+    }
+    if low_confidence_stack_ids:
+        summary.update(
+            {
+                "low_confidence_threshold": LOW_CONFIDENCE_THRESHOLD,
+                "low_confidence_stack_ids": low_confidence_stack_ids,
+                "requires_detection_review": True,
+            }
+        )
     payload = {
         "schema_version": SCHEMA_VERSION,
         "bundle_dir": base,
@@ -422,17 +439,7 @@ def _manifest(detections: List[Detection], bundle_dir: str = DEFAULT_INSTRUCTION
             "expected_file_count": len(files),
             "role_count": len(role_paths),
         },
-        "summary": {
-            "stack_count": len(stacks),
-            "stack_ids": [stack["id"] for stack in stacks],
-            "validation_commands": validation_commands,
-            "has_validation_commands": bool(validation_commands),
-            "missing_validation_stack_ids": missing_validation_stack_ids,
-            "requires_validation_review": bool(missing_validation_stack_ids),
-            "low_confidence_threshold": LOW_CONFIDENCE_THRESHOLD,
-            "low_confidence_stack_ids": low_confidence_stack_ids,
-            "requires_detection_review": bool(low_confidence_stack_ids),
-        },
+        "summary": summary,
         "stacks": stacks,
     }
     return f"{json.dumps(payload, indent=2, sort_keys=True)}\n"
