@@ -48,7 +48,7 @@ Verify a custom bundle folder:
 skillmint --root /path/to/project --instructions-dir docs/project-ai --verify-instructions
 ```
 
-`--verify-instructions` checks that `MANIFEST.json` exists, parses as JSON, matches the expected schema and bundle directory, lists the expected generated files, preserves the expected human/machine entrypoints and role-path map, uses the expected hash algorithm, records the expected file and role counts, stores every `file_hashes` value as a 64-character SHA-256 hex digest, and that every hashed Markdown file still matches its digest. It exits `0` when the bundle is valid and `1` when the bundle is missing, incomplete, stale, malformed, or changed after generation.
+`--verify-instructions` checks that `MANIFEST.json` exists, parses as JSON, matches the expected schema and bundle directory, lists the expected generated files, preserves the expected human/machine entrypoints and role-path map, uses the expected hash algorithm, records the expected file and role counts, stores every `file_hashes` value as a 64-character SHA-256 hex digest, validates stack confidence values, keeps low-confidence detection review flags aligned with the stack list, and that every hashed Markdown file still matches its digest. It exits `0` when the bundle is valid and `1` when the bundle is missing, incomplete, stale, malformed, or changed after generation.
 
 Overwrite an existing generated bundle intentionally:
 
@@ -62,8 +62,8 @@ skillmint --yes --force
 - `STACKS.md`: detected stacks, confidence, and evidence.
 - `COMMANDS.md`: install, run, test, and build commands from the detected stack definitions.
 - `SAFE_CHANGES.md`: focused editing rules and paths that should normally be avoided.
-- `NEXT_STEPS.md`: review checklist, validation gaps, and per-stack validation hints for the next safe edit.
-- `MANIFEST.json`: machine-readable metadata for automation, including schema version, generated file paths, SHA-256 file hashes, integrity metadata, role paths, summary metadata, detected stack IDs, commands, directories, avoid rules, preferred validation command per stack, and validation-gap flags.
+- `NEXT_STEPS.md`: review checklist, low-confidence detection review, validation gaps, and per-stack validation hints for the next safe edit.
+- `MANIFEST.json`: machine-readable metadata for automation, including schema version, generated file paths, SHA-256 file hashes, integrity metadata, role paths, summary metadata, detected stack IDs, confidence-review flags, commands, directories, avoid rules, preferred validation command per stack, and validation-gap flags.
 
 ## Review flow
 
@@ -71,12 +71,13 @@ After generation, review the bundle in this order:
 
 1. Read `MANIFEST.json` if the bundle is being consumed programmatically.
 2. Confirm `STACKS.md` matches the real project.
-3. Copy the relevant command from `COMMANDS.md` before changing code.
-4. Check `SAFE_CHANGES.md` for conventions and paths to avoid.
-5. Use `NEXT_STEPS.md` as the short checklist for the next change.
-6. If `requires_validation_review` is `true`, add or document validation commands before broad scripted use.
-7. If automation consumes generated files, check `integrity.hash_algorithm`, `integrity.hashed_file_count`, `integrity.expected_file_count`, `integrity.role_count`, `entrypoints`, `files_by_role`, and that each `file_hashes` value is a 64-character lowercase SHA-256 hex digest before using bundle output.
-8. Run `skillmint --verify-instructions` as a lightweight regression check after generated files are committed or copied between workspaces.
+3. If `requires_detection_review` is `true`, manually confirm the stacks listed in `low_confidence_stack_ids` before allowing broad automated edits.
+4. Copy the relevant command from `COMMANDS.md` before changing code.
+5. Check `SAFE_CHANGES.md` for conventions and paths to avoid.
+6. Use `NEXT_STEPS.md` as the short checklist for the next change.
+7. If `requires_validation_review` is `true`, add or document validation commands before broad scripted use.
+8. If automation consumes generated files, check `integrity.hash_algorithm`, `integrity.hashed_file_count`, `integrity.expected_file_count`, `integrity.role_count`, `entrypoints`, `files_by_role`, and that each `file_hashes` value is a 64-character lowercase SHA-256 hex digest before using bundle output.
+9. Run `skillmint --verify-instructions` as a lightweight regression check after generated files are committed or copied between workspaces.
 
 ## Manifest schema
 
@@ -115,7 +116,10 @@ The manifest is intentionally small and stable enough for scripts to parse:
     "validation_commands": ["pytest"],
     "has_validation_commands": true,
     "missing_validation_stack_ids": [],
-    "requires_validation_review": false
+    "requires_validation_review": false,
+    "low_confidence_threshold": 70,
+    "low_confidence_stack_ids": ["custom-stack"],
+    "requires_detection_review": true
   },
   "stacks": [
     {
@@ -135,6 +139,8 @@ The manifest is intentionally small and stable enough for scripts to parse:
 Use `schema_version` before building downstream automation around the manifest.
 
 The top-level `summary` block is designed for quick automation checks so scripts do not need to scan every stack object just to know which stacks were selected or which validation commands should run. Use `entrypoints` and `files_by_role` when tooling needs a stable path for a specific purpose instead of guessing filenames.
+
+The `low_confidence_stack_ids` and `requires_detection_review` fields appear when one or more selected stacks fall below the confidence threshold. They make weak detections explicit so CI, setup scripts, or AI agents can pause for human review before broad edits.
 
 The `missing_validation_stack_ids` and `requires_validation_review` fields make validation gaps explicit. They are useful for CI and repository setup scripts that should pause for manual review when a detected stack has no known validation command.
 
@@ -178,6 +184,8 @@ Confidence: 80%
 3. Follow SAFE_CHANGES.md before editing.
 4. Refresh this folder when project structure changes.
 ```
+
+When a detected stack falls below the confidence threshold, `NEXT_STEPS.md` also includes a `Detection confidence review` section listing the stack IDs that need manual confirmation.
 
 When a detected stack has no known validation command, `NEXT_STEPS.md` also includes a `Validation gaps` section listing the stack IDs that need manual review.
 
