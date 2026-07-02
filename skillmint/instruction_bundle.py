@@ -12,6 +12,7 @@ DEFAULT_INSTRUCTIONS_DIR = ".ai/instructions"
 INSTRUCTION_BUNDLE_FILES = ["README.md", "STACKS.md", "COMMANDS.md", "SAFE_CHANGES.md", "NEXT_STEPS.md", "MANIFEST.json"]
 HASH_ALGORITHM = "sha256"
 SHA256_HEX_LENGTH = 64
+LOW_CONFIDENCE_THRESHOLD = 70
 INSTRUCTION_BUNDLE_ROLES = {
     "human_entrypoint": "README.md",
     "stack_evidence": "STACKS.md",
@@ -20,7 +21,7 @@ INSTRUCTION_BUNDLE_ROLES = {
     "next_steps": "NEXT_STEPS.md",
     "machine_manifest": "MANIFEST.json",
 }
-SCHEMA_VERSION = "1.6"
+SCHEMA_VERSION = "1.7"
 
 
 def write_instruction_bundle(root: Path, detections: List[Detection], selected_stack_ids: Iterable[str], *, output_dir: str = DEFAULT_INSTRUCTIONS_DIR, overwrite: bool = False, skipped: List[str] | None = None) -> List[Path]:
@@ -134,12 +135,28 @@ def verify_instruction_bundle(root: Path, output_dir: str = DEFAULT_INSTRUCTIONS
         errors.append("MANIFEST.json: stacks must be a list")
         stacks = []
     stack_ids = [stack.get("id") for stack in stacks if isinstance(stack, dict)]
+    low_confidence_stack_ids: list[str] = []
+    for stack in stacks:
+        if not isinstance(stack, dict):
+            errors.append("MANIFEST.json: stacks must contain objects")
+            continue
+        confidence = stack.get("confidence")
+        stack_id = stack.get("id")
+        if not isinstance(confidence, int) or confidence < 0 or confidence > 100:
+            errors.append(f"MANIFEST.json: stack {stack_id!r} confidence must be an integer from 0 to 100")
+            continue
+        if isinstance(stack_id, str) and confidence < LOW_CONFIDENCE_THRESHOLD:
+            low_confidence_stack_ids.append(stack_id)
 
     summary = manifest.get("summary") if isinstance(manifest.get("summary"), dict) else {}
     if summary.get("stack_count") != len(stacks):
         errors.append(f"MANIFEST.json: summary.stack_count should be {len(stacks)}")
     if summary.get("stack_ids") != stack_ids:
         errors.append("MANIFEST.json: summary.stack_ids do not match stacks[].id order")
+    if summary.get("low_confidence_stack_ids") != low_confidence_stack_ids:
+        errors.append("MANIFEST.json: summary.low_confidence_stack_ids do not match stacks below the confidence threshold")
+    if summary.get("requires_detection_review") != bool(low_confidence_stack_ids):
+        errors.append("MANIFEST.json: summary.requires_detection_review does not match low-confidence detections")
 
     integrity = manifest.get("integrity") if isinstance(manifest.get("integrity"), dict) else {}
     if integrity.get("hash_algorithm") != HASH_ALGORITHM:
@@ -321,9 +338,24 @@ def _missing_validation_stack_ids(detections: List[Detection]) -> List[str]:
     return [detection.id for detection in detections if _preferred_validation_command(detection) is None]
 
 
+def _low_confidence_stack_ids(detections: List[Detection]) -> List[str]:
+    return [detection.id for detection in detections if detection.confidence < LOW_CONFIDENCE_THRESHOLD]
+
+
 def _next_steps(detections: List[Detection]) -> str:
     missing_validation = _missing_validation_stack_ids(detections)
+    low_confidence = _low_confidence_stack_ids(detections)
     lines = ["# Next Steps", "", "1. Confirm detected stacks in STACKS.md.", "2. Run relevant commands from COMMANDS.md.", "3. Follow SAFE_CHANGES.md.", "4. Refresh this folder when project structure changes.", ""]
+    if low_confidence:
+        lines += [
+            "## Detection confidence review",
+            "",
+            f"Manually confirm stacks below {LOW_CONFIDENCE_THRESHOLD}% confidence before allowing broad automated edits:",
+            "",
+        ]
+        for stack_id in low_confidence:
+            lines.append(f"- `{stack_id}`")
+        lines.append("")
     if missing_validation:
         lines += [
             "## Validation gaps",
@@ -342,6 +374,8 @@ def _next_steps(detections: List[Detection]) -> str:
             lines.append(f"- Validate related changes with `{command}`.")
         else:
             lines.append("- Add a validation command when this stack gains tests or checks.")
+        if detection.confidence < LOW_CONFIDENCE_THRESHOLD:
+            lines.append("- Confirm this detection manually before making wide project changes.")
         if detection.stack.directories:
             paths = ", ".join(f"`{path}`" for path in detection.stack.directories[:3])
             lines.append(f"- Review expected paths: {paths}.")
@@ -367,6 +401,7 @@ def _manifest(detections: List[Detection], bundle_dir: str = DEFAULT_INSTRUCTION
         )
     validation_commands = _validation_commands(detections)
     missing_validation_stack_ids = _missing_validation_stack_ids(detections)
+    low_confidence_stack_ids = _low_confidence_stack_ids(detections)
     role_paths = _bundle_role_paths(base)
     files = [_bundle_path(base, name) for name in INSTRUCTION_BUNDLE_FILES]
     hashed_files = file_hashes or {}
@@ -394,6 +429,9 @@ def _manifest(detections: List[Detection], bundle_dir: str = DEFAULT_INSTRUCTION
             "has_validation_commands": bool(validation_commands),
             "missing_validation_stack_ids": missing_validation_stack_ids,
             "requires_validation_review": bool(missing_validation_stack_ids),
+            "low_confidence_threshold": LOW_CONFIDENCE_THRESHOLD,
+            "low_confidence_stack_ids": low_confidence_stack_ids,
+            "requires_detection_review": bool(low_confidence_stack_ids),
         },
         "stacks": stacks,
     }
