@@ -48,7 +48,7 @@ Verify a custom bundle folder:
 skillmint --root /path/to/project --instructions-dir docs/project-ai --verify-instructions
 ```
 
-`--verify-instructions` checks that `MANIFEST.json` exists, parses as JSON, matches the expected schema and bundle directory, lists the expected generated files, preserves the expected human/machine entrypoints and role-path map, uses the expected hash algorithm, records the expected file and role counts, and that every hashed Markdown file still matches its SHA-256 digest. It exits `0` when the bundle is valid and `1` when the bundle is missing, incomplete, stale, or changed after generation.
+`--verify-instructions` checks that `MANIFEST.json` exists, parses as JSON, matches the expected schema and bundle directory, lists the expected generated files, preserves the expected human/machine entrypoints and role-path map, uses the expected hash algorithm, records the expected file and role counts, stores every `file_hashes` value as a 64-character SHA-256 hex digest, and that every hashed Markdown file still matches its digest. It exits `0` when the bundle is valid and `1` when the bundle is missing, incomplete, stale, malformed, or changed after generation.
 
 Overwrite an existing generated bundle intentionally:
 
@@ -75,7 +75,7 @@ After generation, review the bundle in this order:
 4. Check `SAFE_CHANGES.md` for conventions and paths to avoid.
 5. Use `NEXT_STEPS.md` as the short checklist for the next change.
 6. If `requires_validation_review` is `true`, add or document validation commands before broad scripted use.
-7. If automation consumes generated files, check `integrity.hash_algorithm`, `integrity.hashed_file_count`, `integrity.expected_file_count`, `integrity.role_count`, `entrypoints`, and `files_by_role` before trusting cached bundle output.
+7. If automation consumes generated files, check `integrity.hash_algorithm`, `integrity.hashed_file_count`, `integrity.expected_file_count`, `integrity.role_count`, `entrypoints`, `files_by_role`, and that each `file_hashes` value is a 64-character lowercase SHA-256 hex digest before using bundle output.
 8. Run `skillmint --verify-instructions` as a lightweight regression check after generated files are committed or copied between workspaces.
 
 ## Manifest schema
@@ -92,7 +92,7 @@ The manifest is intentionally small and stable enough for scripts to parse:
   },
   "files": [".ai/instructions/README.md"],
   "file_hashes": {
-    ".ai/instructions/README.md": "<sha256>"
+    ".ai/instructions/README.md": "<64-character sha256 hex digest>"
   },
   "files_by_role": {
     "human_entrypoint": ".ai/instructions/README.md",
@@ -138,7 +138,7 @@ The top-level `summary` block is designed for quick automation checks so scripts
 
 The `missing_validation_stack_ids` and `requires_validation_review` fields make validation gaps explicit. They are useful for CI and repository setup scripts that should pause for manual review when a detected stack has no known validation command.
 
-The `file_hashes` block records SHA-256 hashes for the generated human-readable bundle files. Automation can use these hashes to detect manual edits, stale generated output, or accidental partial copies without parsing every Markdown file first. The manifest itself is not included in `file_hashes` so the hash list remains deterministic and easy to verify.
+The `file_hashes` block records SHA-256 hashes for the generated human-readable bundle files. Each value must be a 64-character SHA-256 hex digest. Automation can use these hashes to detect manual edits, stale generated output, malformed manifests, or accidental partial copies without parsing every Markdown file first. The manifest itself is not included in `file_hashes` so the hash list remains deterministic and easy to verify.
 
 The `integrity` block records the hash algorithm, the number of hashed Markdown files, whether the manifest hashes itself, the expected number of generated bundle files, and the expected number of role mappings. Use this for lightweight CI checks that need to detect partial bundle output, stale role mappings, or unexpected schema changes before reading every Markdown file.
 
