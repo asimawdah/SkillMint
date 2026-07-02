@@ -11,6 +11,7 @@ from .models import Detection
 DEFAULT_INSTRUCTIONS_DIR = ".ai/instructions"
 INSTRUCTION_BUNDLE_FILES = ["README.md", "STACKS.md", "COMMANDS.md", "SAFE_CHANGES.md", "NEXT_STEPS.md", "MANIFEST.json"]
 HASH_ALGORITHM = "sha256"
+SHA256_HEX_LENGTH = 64
 INSTRUCTION_BUNDLE_ROLES = {
     "human_entrypoint": "README.md",
     "stack_evidence": "STACKS.md",
@@ -155,6 +156,9 @@ def verify_instruction_bundle(root: Path, output_dir: str = DEFAULT_INSTRUCTIONS
     expected_hashed_files = [path for path in expected_files if not path.endswith("/MANIFEST.json") and path != "MANIFEST.json"]
     if set(file_hashes) != set(expected_hashed_files):
         errors.append("MANIFEST.json: file_hashes keys do not match expected Markdown bundle files")
+    for relative_path, expected_digest in file_hashes.items():
+        if relative_path in expected_hashed_files and not _is_sha256_digest(expected_digest):
+            errors.append(f"MANIFEST.json: file_hashes[{relative_path!r}] must be a 64-character sha256 hex digest")
     if integrity.get("hashed_file_count") != len(file_hashes):
         errors.append("MANIFEST.json: hashed_file_count does not match file_hashes")
 
@@ -220,6 +224,10 @@ def _bundle_role_paths(base: str) -> dict[str, str]:
 
 def _content_sha256(content: str) -> str:
     return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+
+def _is_sha256_digest(value: object) -> bool:
+    return isinstance(value, str) and len(value) == SHA256_HEX_LENGTH and all(char in "0123456789abcdef" for char in value.lower())
 
 
 def _file_hashes(outputs: dict[str, str], base: str) -> dict[str, str]:
