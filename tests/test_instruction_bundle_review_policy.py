@@ -33,7 +33,7 @@ def test_ai_instruction_bundle_review_policy_exists_and_covers_required_gates() 
         "skillmint --verify-instructions",
         "entrypoints",
         "files_by_role",
-        "." / "..",
+        ".` / `..",
     ]
     for term in required_terms:
         assert term in policy
